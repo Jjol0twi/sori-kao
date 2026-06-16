@@ -1,0 +1,12 @@
+sori-kao
+Copyright 2026 imtsoftai
+
+This product is licensed under the Apache License, Version 2.0.
+
+이 프로젝트의 카모지 카탈로그는 직접 선별(manually curated)했으며,
+아래 공개 자료는 후보 탐색과 카테고리 참고용으로만 사용했습니다.
+(실시간 호출이나 데이터셋 재배포는 하지 않습니다.)
+
+- kaomojis.jp (https://kaomojis.jp/en/tools)
+- ekohrt Emoticon/Kaomoji Dataset (https://github.com/ekohrt/emoticon_kaomoji_dataset)
+- mrzjy kaomoji_caption dataset (https://huggingface.co/datasets/mrzjy/kaomoji_caption)
