@@ -1,0 +1,74 @@
+"""feature_extractor 단위 테스트."""
+
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from feature_extractor import (
+    FEATURE_DIM,
+    FEATURE_NAMES,
+    extract_features_from_text,
+)
+
+
+def _feat(text, name):
+    return extract_features_from_text(text)[FEATURE_NAMES.index(name)]
+
+
+def test_vector_dimension():
+    assert FEATURE_DIM == 14
+    assert len(FEATURE_NAMES) == 14
+    assert extract_features_from_text("아무거나").shape == (14,)
+
+
+def test_all_features_in_unit_range():
+    for text in ["아싸아싸!!", "으으... 힘들다", "ㅋㅋㅋ 뭐야",
+                 "값값값값값값", "", "lol123🔥", "?????"]:
+        vec = extract_features_from_text(text)
+        assert (vec >= 0).all() and (vec <= 1).all(), text
+
+
+def test_empty_input_is_all_zero():
+    vec = extract_features_from_text("")
+    assert (vec == 0).all()
+
+
+def test_bright_vowel_and_repetition():
+    # 아싸아싸: 모두 밝은 모음 ㅏ, 2음절 블록이 반복
+    assert _feat("아싸아싸", "bright_vowel_ratio") == 1.0
+    assert _feat("아싸아싸", "syllable_repetition") == 1.0
+
+
+def test_dark_vowel():
+    # 우물쭈물류: 어두운 모음 비율이 0보다 큼
+    assert _feat("우주", "dark_vowel_ratio") > 0
+
+
+def test_final_consonant_features():
+    # 값 = 겹받침 ㅄ → density 집계, ng/s 단일 종성에는 안 들어감
+    assert _feat("값", "final_consonant_density") == 1.0
+    assert _feat("값", "final_s_ratio") == 0.0
+    # 강 = 종성 ㅇ
+    assert _feat("강", "final_ng_ratio") == 1.0
+    # 앗 = 종성 ㅅ
+    assert _feat("앗", "final_s_ratio") == 1.0
+
+
+def test_char_repetition_includes_jamo_and_punct():
+    # 자모만 입력도 char_repetition으로 잡힌다(N=0이어도 안전)
+    assert _feat("ㅋㅋㅋ", "char_repetition") == 1.0
+    assert _feat("!!!", "char_repetition") == 1.0
+
+
+def test_punctuation_energy_split_and_saturation():
+    assert _feat("!!!", "exclaim_energy") == 1.0      # min(3,3)/3
+    assert _feat("?", "question_energy") == 1.0 / 3
+    assert _feat("좋아...", "ellipsis_energy") == 1.0 / 3
+    # 부호 종류가 분리되어 서로 영향 없음
+    assert _feat("!!!", "question_energy") == 0.0
+
+
+def test_long_input_stays_normalized():
+    vec = extract_features_from_text("아" * 200 + "!" * 50)
+    assert (vec <= 1).all()
