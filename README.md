@@ -37,6 +37,7 @@
 sori-kao/
 ├── app.py                    # tkinter GUI + 전체 흐름
 ├── hangul_decomposer.py      # 한글 음절 → 초성·중성·종성
+├── text_preprocessor.py      # 입력 분류(음절/자모/부호/기타)
 ├── feature_extractor.py      # 14차원 음운 특징 벡터
 ├── scoring_model.py          # NumPy 점수 + Top-3 + 신뢰도
 ├── recommender.py            # 점수 → 카모지 선택(결정적)
@@ -44,31 +45,48 @@ sori-kao/
 ├── data/
 │   ├── category_weights.json # 특징 가중치·bias·보조 키워드·임계값
 │   └── kaomoji_catalog.json  # 카테고리별 카모지(+size)
-├── tests/
+├── tests/                    # 분해·특징·점수·회귀 단위 테스트
 └── docs/
     ├── development-goal.md    # 기획서
     ├── design.md             # 설계서
-    └── build-prompt.md       # 구현 지시 프롬프트
+    ├── build-prompt.md       # 구현 지시 프롬프트
+    └── git-conventions.md    # 커밋 컨벤션
 ```
 
 ## 상태
 
-설계 단계 완료. 기획서·설계서·구현 프롬프트가 [`docs/`](docs/)에 정리되어 있으며, 코드 구현은 진행 예정이다.
+MVP 구현 완료. 한글 분해부터 tkinter GUI까지 동작하며, 단위·회귀 테스트가 통과한다.
 
-## 실행 (예정)
+## 실행
 
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install numpy
 python app.py
 ```
 
-표준 라이브러리 tkinter와 NumPy 외 의존성은 없다.
+표준 라이브러리 tkinter와 NumPy 외 의존성은 없다. GUI 실행에는 디스플레이가 필요하다.
+
+### 테스트
+
+```bash
+pip install pytest
+python -m pytest
+```
+
+## 한계
+
+- 음운 특징과 감정의 관계는 **절대 규칙이 아니라 경향**이다. 추천 이유는 감정 판정이 아니라 점수 계산 근거를 보여주는 설명이다.
+- `죄송합니다...`처럼 밝은 모음이 우세하거나 키워드에 크게 의존하는 입력은 기대 카테고리가 1위에 안 들 수 있다. 이런 입력은 **낮은 신뢰도**로 표시한다.
+- 설계서 §14 테스트 입력 기준 기대 카테고리 Top-3 적중률은 약 90%다(심리학적 정확성을 보장하지 않는다).
 
 ## 문서
 
 - [기획서](docs/development-goal.md) — 배경·차별점·MVP 범위·반례·평가 기준
 - [설계서](docs/design.md) — 분해/특징/점수/신뢰도/데이터 스키마/GUI 명세
 - [구현 프롬프트](docs/build-prompt.md) — 위 문서를 구현 계약으로 정리
+- [커밋 컨벤션](docs/git-conventions.md) — Conventional Commits 규칙
 
 ## 라이선스
 
