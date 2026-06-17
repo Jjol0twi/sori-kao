@@ -49,6 +49,9 @@ class KaomojiRecommender:
         primary = tie_categories[0]
         tie = [(c, self.select_by_size(c)) for c in tie_categories]
         secondary = [c for c, _ in score_result.top3 if c not in tie_categories]
+        # 신뢰도가 낮은(짧거나 모호한) 입력은 과도한 확신을 피해 후보를 1~2개로 줄인다
+        if score_result.confidence == "low":
+            secondary = secondary[:1]
         return Recommendation(
             primary_category=primary,
             primary_kaomoji=self.select_by_size(primary),
