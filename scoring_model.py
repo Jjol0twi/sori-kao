@@ -111,7 +111,7 @@ class ScoringModel:
         )
         contributions = [(name, val) for name, val in contributions if val > 0]
 
-        confidence = self._confidence(result.n, ranked, features, aux, top_category)
+        confidence = self._confidence(result.n, ranked, features, aux, top_idx)
 
         return ScoreResult(
             features=features,
@@ -125,16 +125,20 @@ class ScoringModel:
             n=result.n,
         )
 
-    def _confidence(self, n, ranked, features, aux, top_category) -> str:
+    def _confidence(self, n, ranked, features, aux, top_idx) -> str:
         """신뢰도 high/low 판정 — build-prompt §8."""
         if n < self.min_syllables:
             return "low"
         top_score = ranked[0][1]
         second_score = ranked[1][1]
-        if top_score <= 0:
+        if top_score <= 0:  # 점수가 비양수면 비율 판정 불가 → 모호로 본다(0-나눗셈 가드)
             return "low"
         if (top_score - second_score) / top_score < self.score_gap_ratio:
             return "low"
-        if features.sum() < 1e-9 and aux.get(top_category, 0) > 0:
+        # 키워드 의존: 1위의 음운 점수보다 보조 보너스가 더 크면 키워드가 결과를 좌우한 것
+        top_category = CATEGORIES[top_idx]
+        aux_top = aux.get(top_category, 0)
+        phonetic_top = float(self.weights[top_idx] @ features + self.bias[top_idx])
+        if aux_top > 0 and phonetic_top < aux_top:
             return "low"
         return "high"
