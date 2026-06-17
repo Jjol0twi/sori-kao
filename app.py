@@ -19,6 +19,12 @@ from scoring_model import ScoringModel, ScoreResult
 from theme import Theme, detect_mode
 
 _EMPTY = "empty"  # 빈 입력 상태 표식
+_EDIT_SHORTCUTS = (
+    ("a", "<<SelectAll>>"),
+    ("c", "<<Copy>>"),
+    ("v", "<<Paste>>"),
+    ("x", "<<Cut>>"),
+)
 
 
 @dataclass
@@ -34,6 +40,31 @@ def analyze(text: str, model: ScoringModel, recommender: KaomojiRecommender):
         return None
     score = model.score(text)
     return Analysis(score, recommender.recommend(score), build_explanation(score))
+
+
+def _forward_text_edit_event(virtual_event: str):
+    def handler(event):
+        event.widget.event_generate(virtual_event)
+        return "break"
+
+    return handler
+
+
+def bind_text_edit_shortcuts(entry, is_macos: bool = None):
+    """Entry 위젯에 복사/붙여넣기/전체선택 단축키를 명시적으로 연결한다."""
+    if is_macos is None:
+        is_macos = sys.platform == "darwin"
+
+    modifiers = ["Control"]
+    if is_macos:
+        modifiers.append("Command")
+
+    for modifier in modifiers:
+        for key, virtual_event in _EDIT_SHORTCUTS:
+            entry.bind(
+                f"<{modifier}-{key}>",
+                _forward_text_edit_event(virtual_event),
+            )
 
 
 class KaomojiApp:
@@ -74,6 +105,7 @@ class KaomojiApp:
         )
         self.entry.pack(side="left", fill="x", expand=True, ipady=5)
         self.entry.bind("<Return>", lambda _e: self.on_submit())
+        bind_text_edit_shortcuts(self.entry)
         self.entry.focus_set()
         tk.Button(self.entry_row, text="추천", command=self.on_submit).pack(
             side="left", padx=(8, 0)
