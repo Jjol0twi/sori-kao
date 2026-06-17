@@ -1,8 +1,10 @@
 """tkinter GUI와 전체 추천 흐름(build-prompt §13).
 
-초기에는 작은 입력창만 보이다가, 입력이 확정되면 창이 아래로 확장되며
-1위 카테고리의 카모지(작음/보통/큼)와 추천 이유·보조 후보를 보여준다.
-1위가 동점이면 결과를 두 열로 나눠 보여준다.
+초기에는 입력창 + 추천(Enter) + 초기화 버튼만 있는 작은 창이 뜬다.
+입력이 확정되면 창이 아래로 확장되며 1위 카테고리의 카모지(작음/보통/큼)와
+추천 이유·보조 후보를 보여준다. 1위가 동점이면 결과를 세로 두 열로 나눠
+각 감정의 카모지를 나란히 보여준다. 초기화 버튼은 입력과 결과를 지우고
+다시 작은 입력창 상태로 되돌린다.
 """
 
 import tkinter as tk
@@ -57,6 +59,9 @@ class KaomojiApp:
         tk.Button(
             entry_row, text="추천", command=self.on_submit, font=("", 12),
         ).pack(side="left", padx=(8, 0))
+        tk.Button(
+            entry_row, text="초기화", command=self.on_reset, font=("", 12),
+        ).pack(side="left", padx=(6, 0))
 
         self.toast = tk.Label(root, text="", bg=self.BG, fg="#2a7", font=("", 10))
         self.toast.pack()
@@ -65,6 +70,8 @@ class KaomojiApp:
         self.result_frame = tk.Frame(root, bg=self.BG, padx=16, pady=8)
         self._result_shown = False
 
+        self._refit()  # 시작은 입력창 크기에 맞춘 작은 창
+
     # ---- 동작 ----
     def on_submit(self):
         analysis = analyze(self.entry.get(), self.model, self.recommender)
@@ -72,20 +79,35 @@ class KaomojiApp:
             child.destroy()
 
         if analysis is None:
-            self._show_result_frame()
             tk.Label(
                 self.result_frame, text="한국어 단어나 문장을 입력해주세요.",
                 bg=self.BG, fg="#c33", font=("", 12),
             ).pack(anchor="w")
-            return
-
-        self._render(analysis)
+        else:
+            self._render(analysis)
         self._show_result_frame()
+        self._refit()  # 결과 크기에 맞춰 아래로 확장
+
+    def on_reset(self):
+        """입력과 결과를 지우고 다시 작은 입력창 상태로 되돌린다."""
+        self.entry.delete(0, "end")
+        for child in self.result_frame.winfo_children():
+            child.destroy()
+        self.result_frame.pack_forget()
+        self._result_shown = False
+        self.toast.config(text="")
+        self.entry.focus_set()
+        self._refit()  # 작은 창으로 축소
 
     def _show_result_frame(self):
         if not self._result_shown:
             self.result_frame.pack(fill="both", expand=True)
             self._result_shown = True
+
+    def _refit(self):
+        """창 크기를 현재 내용에 맞게 다시 맞춘다(확장/축소)."""
+        self.root.update_idletasks()
+        self.root.geometry("")
 
     def _render(self, analysis: Analysis):
         rec = analysis.recommendation
