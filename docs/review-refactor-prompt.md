@@ -29,7 +29,7 @@
 - 커밋 메시지는 Conventional Commits 형식과 docs/git-conventions.md를 따른다. AI/도구 공동작성 트레일러는 넣지 않는다.
 
 필수 검증:
-- uv run --with pytest --with numpy python -m pytest
+- uv run --with pytest python -m pytest
 - 필요하면 주요 입력 예시(아싸아싸!!, ㅋㅋㅋㅋ 뭐야, 으으... 힘들다, 죄송합니다..., 고마워요ㅎㅎ, 빠샤 집중하자)를 직접 실행해 Top-3, 신뢰도, 추천 이유를 확인한다.
 
 완료 보고:

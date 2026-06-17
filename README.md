@@ -35,6 +35,8 @@
 
 ```
 sori-kao/
+├── pyproject.toml            # Python/NumPy 의존성 선언
+├── uv.lock                   # uv 의존성 잠금 파일
 ├── app.py                    # tkinter GUI + 전체 흐름
 ├── hangul_decomposer.py      # 한글 음절 → 초성·중성·종성
 ├── text_preprocessor.py      # 입력 분류(음절/자모/부호/기타)
@@ -70,11 +72,10 @@ uv가 받는 Python에는 Tk 8.6이 포함된다. `.python-version`(3.13) 덕분
 ```bash
 uv python install 3.13      # 처음 한 번(이미 있으면 생략)
 uv venv                     # .python-version(3.13)으로 .venv 생성
-uv pip install numpy
 uv run python app.py
 ```
 
-한 줄로 임시 실행: `uv run --with numpy python app.py`
+NumPy는 `pyproject.toml`의 프로젝트 의존성으로 설치된다.
 
 ### uv를 안 쓰는 경우
 
@@ -92,14 +93,14 @@ Tk 버전 확인: `python -c "import tkinter; print(tkinter.TkVersion)"` → **8
 ### 테스트
 
 ```bash
-uv run --with pytest --with numpy python -m pytest
+uv run --with pytest python -m pytest
 # 또는 venv 활성화 후: pip install numpy pytest && python -m pytest
 ```
 
 ## 한계
 
 - 음운 특징과 감정의 관계는 **절대 규칙이 아니라 경향**이다. 추천 이유는 감정 판정이 아니라 점수 계산 근거를 보여주는 설명이다.
-- `죄송합니다...`처럼 밝은 모음이 우세하거나 키워드에 크게 의존하는 입력은 기대 카테고리가 1위에 안 들 수 있다. 이런 입력은 **낮은 신뢰도**로 표시한다.
+- `죄송`처럼 입력이 짧거나 키워드에 크게 의존하는 입력은 기대 카테고리가 1위에 안 들 수 있다. 이런 입력은 **낮은 신뢰도**로 표시한다.
 - 설계서 §14 테스트 입력 기준 기대 카테고리 Top-3 적중률은 약 90%다(심리학적 정확성을 보장하지 않는다).
 
 ## 문서

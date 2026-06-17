@@ -184,6 +184,8 @@ final/
 ├── docs/
 │   ├── development-goal.md
 │   └── design.md
+├── pyproject.toml
+├── uv.lock
 ├── app.py
 ├── hangul_decomposer.py
 ├── feature_extractor.py

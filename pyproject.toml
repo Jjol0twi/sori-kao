@@ -1,0 +1,12 @@
+[project]
+name = "sori-kao"
+version = "0.1.0"
+description = "Rule-based Korean phonetic-symbolism kaomoji recommender"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+]
+
+[tool.uv]
+package = false

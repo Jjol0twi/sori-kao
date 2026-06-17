@@ -374,9 +374,13 @@ JSON은 주석을 지원하지 않으므로, 수치 출처 메타데이터는 `c
   "auxiliary_keywords": {
     "감사": { "category": "감사", "bonus": 0.4 },
     "고마": { "category": "감사", "bonus": 0.4 },
-    "미안": { "category": "사과", "bonus": 0.4 },
-    "죄송": { "category": "사과", "bonus": 0.4 },
-    "힘들": { "category": "피곤", "bonus": 0.3 }
+    "고맙": { "category": "감사", "bonus": 0.4 },
+    "미안": { "category": "사과", "bonus": 0.5 },
+    "죄송": { "category": "사과", "bonus": 0.5 },
+    "힘들": { "category": "피곤", "bonus": 0.3 },
+    "파이팅": { "category": "응원", "bonus": 0.4 },
+    "화이팅": { "category": "응원", "bonus": 0.4 },
+    "집중": { "category": "집중", "bonus": 0.4 }
   }
 }
 ```
@@ -437,6 +441,8 @@ final/
 ├── docs/
 │   ├── development-goal.md
 │   └── design.md
+├── pyproject.toml
+├── uv.lock
 ├── app.py
 ├── hangul_decomposer.py
 ├── feature_extractor.py
