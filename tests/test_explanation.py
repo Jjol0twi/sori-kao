@@ -18,7 +18,7 @@ def model():
 
 def test_at_least_two_reasons(model):
     # 완료 기준: 추천 이유 2개 이상(신호가 적은 입력 포함)
-    for text in ["아싸아싸!!", "아", "으으... 힘들다", "음"]:
+    for text in ["아싸아싸!!", "아", "으으... 힘들다", "음", ""]:
         explanation = build_explanation(model.score(text))
         assert len(explanation.reasons) >= 2, text
 

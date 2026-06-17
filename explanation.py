@@ -25,6 +25,7 @@ EXPLANATION_TEMPLATES = {
 }
 
 _AUX_SENTENCE = "보조 신호(키워드·자모)가 감지되어 보조적으로 반영되었습니다."
+_LOW_SIGNAL_SENTENCE = "뚜렷한 음운 신호가 적어 입력 정보가 부족하게 반영되었습니다."
 _FALLBACK_SENTENCE = "뚜렷한 음운 신호가 적어 기본 후보로 추천되었습니다."
 _LOW_CONFIDENCE_NOTE = "신뢰도가 낮아 확정 대신 후보로 추천되었습니다."
 
@@ -50,6 +51,8 @@ def build_explanation(score_result) -> Explanation:
         reasons.append(_AUX_SENTENCE)
 
     # 이유 2개 이상 보장(완료 기준)
+    if not reasons:
+        reasons.append(_LOW_SIGNAL_SENTENCE)
     if len(reasons) < 2:
         reasons.append(_FALLBACK_SENTENCE)
 
