@@ -9,6 +9,7 @@
 모드에 자동으로 반응한다(설정 없이 실시간 재적용).
 """
 
+import sys
 import tkinter as tk
 from dataclasses import dataclass
 
@@ -242,6 +243,13 @@ class KaomojiApp:
 
 
 def main():
+    if tk.TkVersion < 8.6:
+        print(
+            f"[경고] Tk {tk.TkVersion} 감지됨. macOS 기본 Python(3.9)의 Tk 8.5는 "
+            "다크 모드에서 GUI가 깨집니다. Tk 8.6+ Python(예: uv python install 3.13)을 "
+            "쓰세요. 자세한 내용은 README의 '실행' 참고.",
+            file=sys.stderr,
+        )
     root = tk.Tk()
     KaomojiApp(root)
     root.mainloop()
