@@ -104,9 +104,9 @@ def test_contributions_descending_and_match_formula(model):
 
 
 def test_auxiliary_cap_on_jamo_and_keyword_mix(model):
-    # 힘들(키워드 0.3) + ㅠ 반복(자모 0.3) = 0.6 → 상한 0.5로 잘림
-    result = model.score("힘들ㅠㅠㅠ")
-    assert result.auxiliary["피곤"] == pytest.approx(0.5)
+    # 고마(키워드 0.4) + ㅎ 반복(자모 0.3) = 0.7 → 일반 보조 상한 0.5로 잘림
+    result = model.score("고마ㅎㅎㅎ")
+    assert result.auxiliary["감사"] == pytest.approx(0.5)
 
 
 def test_keyword_dependent_input_is_low_confidence(model):
@@ -124,3 +124,23 @@ def test_yawn_convention_routes_to_tired_without_breaking_laughter(model):
     assert model.score("하품").top_category == "피곤"
     assert yawn.confidence == "low"
     assert model.score("하하하").top_category in {"기쁨", "장난", "응원"}
+
+
+def test_distress_words_route_to_tired_as_auxiliary_patterns(model):
+    # 짧은 의미 표현은 음운만으로 밝게 보일 수 있어 보조 패턴으로 피곤 후보를 올린다.
+    pain = model.score("맘이 아프다")
+    tired = model.score("힘들어")
+
+    assert pain.top_category == "피곤"
+    assert "conventional" in pain.auxiliary_sources["피곤"]
+    assert pain.confidence == "low"
+
+    assert tired.top_category == "피곤"
+    assert tired.auxiliary_sources["피곤"] == ["conventional"]
+
+
+def test_rhythmic_ideophone_repetition_does_not_default_to_tired(model):
+    # 반복 의태어가 모두 피곤으로 가면 반복 신호가 과잉 해석된다.
+    result = model.score("구르구르")
+    assert result.top_category == "장난"
+    assert result.confidence == "high"

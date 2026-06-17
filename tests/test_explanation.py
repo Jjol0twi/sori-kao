@@ -37,6 +37,13 @@ def test_conventional_pattern_signal_is_marked_separately(model):
     assert all("키워드·자모" not in r for r in explanation.reasons)
 
 
+def test_rhythmic_ideophone_explanation_does_not_use_fallback(model):
+    explanation = build_explanation(model.score("구르구르"))
+    assert explanation.category == "장난"
+    assert any("리듬" in r for r in explanation.reasons)
+    assert all("기본 후보" not in r for r in explanation.reasons)
+
+
 def test_low_confidence_note(model):
     explanation = build_explanation(model.score("아"))
     assert explanation.confidence == "low"
