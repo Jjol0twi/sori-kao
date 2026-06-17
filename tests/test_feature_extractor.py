@@ -72,3 +72,26 @@ def test_punctuation_energy_split_and_saturation():
 def test_long_input_stays_normalized():
     vec = extract_features_from_text("아" * 200 + "!" * 50)
     assert (vec <= 1).all()
+
+
+def test_ssang_s_final_counts():
+    # 단일 종성 ㅆ도 final_s_ratio에 포함된다(났 = ㄴ/ㅏ/ㅆ)
+    assert _feat("났", "final_s_ratio") == 1.0
+
+
+def test_consonant_class_values():
+    assert _feat("까", "tense_consonant_ratio") == 1.0        # ㄲ 된소리
+    assert _feat("차", "aspirated_consonant_ratio") == 1.0    # ㅊ 거센소리
+    assert _feat("나", "nasal_liquid_ratio") == 1.0           # ㄴ 비음
+    assert _feat("라", "nasal_liquid_ratio") == 1.0           # ㄹ 유음
+
+
+def test_h_initial_excluded_from_consonant_classes():
+    # ㅎ은 어느 자음 비율에도 들어가지 않는다
+    assert _feat("하", "tense_consonant_ratio") == 0.0
+    assert _feat("하", "aspirated_consonant_ratio") == 0.0
+    assert _feat("하", "nasal_liquid_ratio") == 0.0
+
+
+def test_neutral_vowel_value():
+    assert _feat("의", "neutral_vowel_ratio") == 1.0          # ㅢ 중성
