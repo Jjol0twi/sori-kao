@@ -5,6 +5,7 @@
 
 import json
 import os
+import re
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -63,7 +64,9 @@ class ScoringModel:
             [config["categories"][c]["bias"] for c in CATEGORIES], dtype=float
         )  # (10,)
         self.aux_keywords = config["auxiliary_keywords"]
+        self.aux_patterns = config.get("auxiliary_patterns", {})
         self.aux_cap = meta["auxiliary_bonus_cap"]
+        self.conventional_cap = meta.get("conventional_bonus_cap", self.aux_cap)
         self.min_syllables = meta["confidence"]["min_syllables"]
         self.score_gap_ratio = meta["confidence"]["score_gap_ratio"]
 
@@ -77,7 +80,14 @@ class ScoringModel:
             if jamo.count(jamo_char) >= JAMO_MIN_REPEAT:
                 for category in categories:
                     bonus[category] += JAMO_PATTERN_BONUS
-        return {c: min(b, self.aux_cap) for c, b in bonus.items()}
+        bonus = {c: min(b, self.aux_cap) for c, b in bonus.items()}
+        for pattern, info in self.aux_patterns.items():
+            if re.search(pattern, text):
+                category = info["category"]
+                bonus[category] = min(
+                    bonus[category] + info["bonus"], self.conventional_cap
+                )
+        return bonus
 
     def score(self, text: str, result: PreprocessResult = None) -> ScoreResult:
         """입력 문자열을 점수화해 :class:`ScoreResult`를 반환한다."""

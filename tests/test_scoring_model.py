@@ -113,3 +113,12 @@ def test_keyword_dependent_input_is_low_confidence(model):
     # 음운 점수가 약하고 키워드 보너스가 1위를 좌우하면 low
     result = model.score("힘들")
     assert result.confidence == "low"
+
+
+def test_yawn_convention_routes_to_tired_without_breaking_laughter(model):
+    # 하품 소리 관습은 밝은 ㅏ 음운만으로 구분하기 어려워 보조 신호로 처리한다.
+    assert model.score("하암").top_category == "피곤"
+    assert model.score("하아암").top_category == "피곤"
+    assert model.score("하품").top_category == "피곤"
+    assert model.score("하암").confidence == "low"
+    assert model.score("하하하").top_category in {"기쁨", "장난", "응원"}

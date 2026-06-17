@@ -10,6 +10,7 @@
     "weights_source": "heuristic_initial",
     "bias_source": "developer_defined",
     "auxiliary_bonus_cap": 0.5,
+    "conventional_bonus_cap": 1.2,
     "confidence": { "min_syllables": 2, "score_gap_ratio": 0.15 },
     "note": "수치는 문헌 값이 아니라 MVP 초기 휴리스틱. 테스트로 조정한다."
   },
@@ -35,5 +36,9 @@
     "파이팅": { "category": "응원", "bonus": 0.4 },
     "화이팅": { "category": "응원", "bonus": 0.4 },
     "집중": { "category": "집중", "bonus": 0.4 }
+  },
+  "auxiliary_patterns": {
+    "하아*암": { "category": "피곤", "bonus": 1.1 },
+    "하품": { "category": "피곤", "bonus": 1.1 }
   }
 }

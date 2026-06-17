@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -36,6 +37,17 @@ def test_auxiliary_keywords_reference_known_categories_and_cap():
 
     for keyword, item in config["auxiliary_keywords"].items():
         assert keyword
+        assert item["category"] in CATEGORIES
+        assert 0 < item["bonus"] <= cap
+
+
+def test_auxiliary_patterns_reference_known_categories_and_cap():
+    config = _load_json("data/category_weights.json")
+    cap = config["_meta"]["conventional_bonus_cap"]
+
+    for pattern, item in config["auxiliary_patterns"].items():
+        assert pattern
+        re.compile(pattern)
         assert item["category"] in CATEGORIES
         assert 0 < item["bonus"] <= cap
 
