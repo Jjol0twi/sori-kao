@@ -1,7 +1,7 @@
 """추천 이유 문장을 생성한다(build-prompt §12, design.md §10).
 
 실제 점수에 기여한 특징만 사용하고, 단정 대신 "점수 반영"으로 표현한다.
-보조 키워드/자모가 쓰였으면 보조 신호로 표시하고, 신뢰도가 낮으면 완화한다.
+보조 키워드/자모/관습 표현이 쓰였으면 보조 신호로 표시하고, 신뢰도가 낮으면 완화한다.
 """
 
 from dataclasses import dataclass, field
@@ -25,6 +25,8 @@ EXPLANATION_TEMPLATES = {
 }
 
 _AUX_SENTENCE = "보조 신호(키워드·자모)가 감지되어 보조적으로 반영되었습니다."
+_CONVENTIONAL_SENTENCE = "관습 표현 보조 신호가 감지되어 음운 점수와 별도로 반영되었습니다."
+_CONVENTIONAL_LIMIT_SENTENCE = "소리 특징만으로는 웃음·하품 같은 관습 표현을 구분하기 어려워 신뢰도를 낮게 표시합니다."
 _LOW_SIGNAL_SENTENCE = "뚜렷한 음운 신호가 적어 입력 정보가 부족하게 반영되었습니다."
 _FALLBACK_SENTENCE = "뚜렷한 음운 신호가 적어 기본 후보로 추천되었습니다."
 _LOW_CONFIDENCE_NOTE = "신뢰도가 낮아 확정 대신 후보로 추천되었습니다."
@@ -47,12 +49,21 @@ def build_explanation(score_result) -> Explanation:
             reasons.append(sentence)
 
     aux_used = score_result.auxiliary.get(score_result.top_category, 0) > 0
-    if aux_used:
+    aux_sources = getattr(score_result, "auxiliary_sources", {}).get(
+        score_result.top_category, []
+    )
+    if "conventional" in aux_sources:
+        reasons.append(_CONVENTIONAL_SENTENCE)
+    if aux_used and ({source for source in aux_sources} & {"keyword", "jamo"}):
+        reasons.append(_AUX_SENTENCE)
+    if aux_used and not aux_sources:
         reasons.append(_AUX_SENTENCE)
 
     # 이유 2개 이상 보장(완료 기준)
     if not reasons:
         reasons.append(_LOW_SIGNAL_SENTENCE)
+    if "conventional" in aux_sources and len(reasons) < 2:
+        reasons.append(_CONVENTIONAL_LIMIT_SENTENCE)
     if len(reasons) < 2:
         reasons.append(_FALLBACK_SENTENCE)
 

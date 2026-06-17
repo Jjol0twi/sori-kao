@@ -29,6 +29,14 @@ def test_auxiliary_signal_is_marked(model):
     assert any("보조 신호" in r for r in explanation.reasons)
 
 
+def test_conventional_pattern_signal_is_marked_separately(model):
+    # 하품 같은 관습 표현은 키워드·자모가 아니라 관습 패턴 보조 신호로 설명한다
+    explanation = build_explanation(model.score("하암"))
+    assert any("관습 표현" in r for r in explanation.reasons)
+    assert any("구분하기 어려워" in r for r in explanation.reasons)
+    assert all("키워드·자모" not in r for r in explanation.reasons)
+
+
 def test_low_confidence_note(model):
     explanation = build_explanation(model.score("아"))
     assert explanation.confidence == "low"

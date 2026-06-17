@@ -117,8 +117,10 @@ def test_keyword_dependent_input_is_low_confidence(model):
 
 def test_yawn_convention_routes_to_tired_without_breaking_laughter(model):
     # 하품 소리 관습은 밝은 ㅏ 음운만으로 구분하기 어려워 보조 신호로 처리한다.
-    assert model.score("하암").top_category == "피곤"
+    yawn = model.score("하암")
+    assert yawn.top_category == "피곤"
+    assert yawn.auxiliary_sources["피곤"] == ["conventional"]
     assert model.score("하아암").top_category == "피곤"
     assert model.score("하품").top_category == "피곤"
-    assert model.score("하암").confidence == "low"
+    assert yawn.confidence == "low"
     assert model.score("하하하").top_category in {"기쁨", "장난", "응원"}

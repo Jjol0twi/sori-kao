@@ -6,7 +6,7 @@
 import json
 import os
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -43,6 +43,7 @@ class ScoreResult:
     confidence: str                   # "high" | "low"
     contributions: list              # 1위 카테고리의 (feature, 기여도) 내림차순(양수만)
     auxiliary: dict                   # 카테고리별 적용된 보너스(상한 반영)
+    auxiliary_sources: dict           # 카테고리별 보조 신호 출처
     tie_categories: list             # 1위와 동점인 카테고리들(순서 고정)
     n: int                            # 분석 음절 수
 
@@ -73,13 +74,21 @@ class ScoringModel:
     def _auxiliary_bonus(self, text: str, jamo: list) -> dict:
         """키워드·자모 패턴 보너스를 카테고리별 합산하고 상한으로 자른다."""
         bonus = {c: 0.0 for c in CATEGORIES}
+        sources = {c: [] for c in CATEGORIES}
+
+        def add_source(category: str, source: str) -> None:
+            if source not in sources[category]:
+                sources[category].append(source)
+
         for keyword, info in self.aux_keywords.items():
             if keyword in text:
                 bonus[info["category"]] += info["bonus"]
+                add_source(info["category"], "keyword")
         for jamo_char, categories in JAMO_PATTERNS.items():
             if jamo.count(jamo_char) >= JAMO_MIN_REPEAT:
                 for category in categories:
                     bonus[category] += JAMO_PATTERN_BONUS
+                    add_source(category, "jamo")
         bonus = {c: min(b, self.aux_cap) for c, b in bonus.items()}
         for pattern, info in self.aux_patterns.items():
             if re.search(pattern, text):
@@ -87,7 +96,8 @@ class ScoringModel:
                 bonus[category] = min(
                     bonus[category] + info["bonus"], self.conventional_cap
                 )
-        return bonus
+                add_source(category, "conventional")
+        return bonus, sources
 
     def score(self, text: str, result: PreprocessResult = None) -> ScoreResult:
         """입력 문자열을 점수화해 :class:`ScoreResult`를 반환한다."""
@@ -95,7 +105,7 @@ class ScoringModel:
             result = preprocess(text)
         features = extract_features(result)
 
-        aux = self._auxiliary_bonus(text, result.jamo)
+        aux, aux_sources = self._auxiliary_bonus(text, result.jamo)
         aux_vec = np.array([aux[c] for c in CATEGORIES], dtype=float)
         scores = self.weights @ features + self.bias + aux_vec
 
@@ -131,6 +141,7 @@ class ScoringModel:
             confidence=confidence,
             contributions=contributions,
             auxiliary={c: b for c, b in aux.items() if b > 0},
+            auxiliary_sources={c: aux_sources[c] for c, b in aux.items() if b > 0},
             tie_categories=tie,
             n=result.n,
         )
