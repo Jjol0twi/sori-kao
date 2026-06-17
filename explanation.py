@@ -16,7 +16,7 @@ EXPLANATION_TEMPLATES = {
     "nasal_liquid_ratio": "비음·유음이 많아 부드럽거나 울리는 인상으로 반영되었습니다.",
     "final_consonant_density": "받침이 많아 단단하거나 눌린 인상 점수가 반영되었습니다.",
     "final_ng_ratio": "종성 ㅇ이 많아 울림 있는 인상으로 반영되었습니다.",
-    "final_s_ratio": "종성 ㅅ이 많아 끊기거나 날카로운 인상으로 반영되었습니다.",
+    "final_s_ratio": "종성 ㅅ·ㅆ이 많아 끊기거나 날카로운 인상으로 반영되었습니다.",
     "syllable_repetition": "같은 음절 패턴이 반복되어 강조와 리듬감이 감지되었습니다.",
     "char_repetition": "같은 문자가 반복되어 강조·지속 신호가 감지되었습니다.",
     "exclaim_energy": "느낌표가 감지되어 에너지·강조 점수가 올라갔습니다.",
