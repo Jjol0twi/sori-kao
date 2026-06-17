@@ -65,9 +65,9 @@ class ScoringModel:
             [config["categories"][c]["bias"] for c in CATEGORIES], dtype=float
         )  # (10,)
         self.aux_keywords = config["auxiliary_keywords"]
-        self.aux_patterns = config.get("auxiliary_patterns", {})
         self.aux_cap = meta["auxiliary_bonus_cap"]
-        self.conventional_cap = meta.get("conventional_bonus_cap", self.aux_cap)
+        self.semantic_hints = config.get("semantic_hints", {})
+        self.semantic_cap = meta.get("semantic_bonus_cap", self.aux_cap)
         self.min_syllables = meta["confidence"]["min_syllables"]
         self.score_gap_ratio = meta["confidence"]["score_gap_ratio"]
 
@@ -90,13 +90,13 @@ class ScoringModel:
                     bonus[category] += JAMO_PATTERN_BONUS
                     add_source(category, "jamo")
         bonus = {c: min(b, self.aux_cap) for c, b in bonus.items()}
-        for pattern, info in self.aux_patterns.items():
-            if re.search(pattern, text):
-                category = info["category"]
-                bonus[category] = min(
-                    bonus[category] + info["bonus"], self.conventional_cap
-                )
-                add_source(category, "conventional")
+        for tag, info in self.semantic_hints.items():
+            if any(re.search(pattern, text) for pattern in info["patterns"]):
+                for category, category_bonus in info["category_bonus"].items():
+                    bonus[category] = min(
+                        bonus[category] + category_bonus, self.semantic_cap
+                    )
+                    add_source(category, f"semantic:{tag}")
         return bonus, sources
 
     def score(self, text: str, result: PreprocessResult = None) -> ScoreResult:

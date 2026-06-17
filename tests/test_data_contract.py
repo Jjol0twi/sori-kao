@@ -41,15 +41,23 @@ def test_auxiliary_keywords_reference_known_categories_and_cap():
         assert 0 < item["bonus"] <= cap
 
 
-def test_auxiliary_patterns_reference_known_categories_and_cap():
+def test_semantic_hints_reference_known_categories_and_cap():
     config = _load_json("data/category_weights.json")
-    cap = config["_meta"]["conventional_bonus_cap"]
+    cap = config["_meta"]["semantic_bonus_cap"]
 
-    for pattern, item in config["auxiliary_patterns"].items():
-        assert pattern
-        re.compile(pattern)
-        assert item["category"] in CATEGORIES
-        assert 0 < item["bonus"] <= cap
+    assert "auxiliary_patterns" not in config
+    assert config["semantic_hints"]
+
+    for tag, item in config["semantic_hints"].items():
+        assert tag
+        assert item["patterns"]
+        for pattern in item["patterns"]:
+            assert pattern
+            re.compile(pattern)
+        assert item["category_bonus"]
+        for category, bonus in item["category_bonus"].items():
+            assert category in CATEGORIES
+            assert 0 < bonus <= cap
 
 
 def test_kaomoji_catalog_has_required_sizes():

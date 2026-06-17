@@ -10,7 +10,7 @@
     "weights_source": "heuristic_initial",
     "bias_source": "developer_defined",
     "auxiliary_bonus_cap": 0.5,
-    "conventional_bonus_cap": 1.2,
+    "semantic_bonus_cap": 1.2,
     "confidence": { "min_syllables": 2, "score_gap_ratio": 0.15 },
     "note": "수치는 문헌 값이 아니라 MVP 초기 휴리스틱. 테스트로 조정한다."
   },
@@ -36,11 +36,22 @@
     "화이팅": { "category": "응원", "bonus": 0.4 },
     "집중": { "category": "집중", "bonus": 0.4 }
   },
-  "auxiliary_patterns": {
-    "하아*암": { "category": "피곤", "bonus": 1.1 },
-    "하품": { "category": "피곤", "bonus": 1.1 },
-    "아프|힘들|지치|피곤|졸[려리]": { "category": "피곤", "bonus": 0.8 },
-    "이런": { "category": "당황", "bonus": 1.2 },
-    "망할|망했|망했다|짜증|빡치|화나": { "category": "분노", "bonus": 1.1 }
+  "semantic_hints": {
+    "yawn": {
+      "patterns": ["하아*암", "하품"],
+      "category_bonus": { "피곤": 1.1 }
+    },
+    "distress": {
+      "patterns": ["아프", "힘들", "지치", "피곤", "졸[려리]"],
+      "category_bonus": { "피곤": 0.8 }
+    },
+    "surprise_reaction": {
+      "patterns": ["이런"],
+      "category_bonus": { "당황": 1.2 }
+    },
+    "negative_reaction": {
+      "patterns": ["망할", "망했", "망했다", "짜증", "빡치", "화나"],
+      "category_bonus": { "분노": 1.1 }
+    }
   }
 }

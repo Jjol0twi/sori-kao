@@ -115,28 +115,28 @@ def test_keyword_dependent_input_is_low_confidence(model):
     assert result.confidence == "low"
 
 
-def test_yawn_convention_routes_to_tired_without_breaking_laughter(model):
-    # 하품 소리 관습은 밝은 ㅏ 음운만으로 구분하기 어려워 보조 신호로 처리한다.
+def test_yawn_semantic_hint_routes_to_tired_without_breaking_laughter(model):
+    # 하품 소리 관습은 밝은 ㅏ 음운만으로 구분하기 어려워 의미 힌트로 처리한다.
     yawn = model.score("하암")
     assert yawn.top_category == "피곤"
-    assert yawn.auxiliary_sources["피곤"] == ["conventional"]
+    assert yawn.auxiliary_sources["피곤"] == ["semantic:yawn"]
     assert model.score("하아암").top_category == "피곤"
     assert model.score("하품").top_category == "피곤"
     assert yawn.confidence == "low"
     assert model.score("하하하").top_category in {"기쁨", "장난", "응원"}
 
 
-def test_distress_words_route_to_tired_as_auxiliary_patterns(model):
-    # 짧은 의미 표현은 음운만으로 밝게 보일 수 있어 보조 패턴으로 피곤 후보를 올린다.
+def test_distress_words_route_to_tired_as_semantic_hints(model):
+    # 짧은 의미 표현은 음운만으로 밝게 보일 수 있어 의미 힌트로 피곤 후보를 올린다.
     pain = model.score("맘이 아프다")
     tired = model.score("힘들어")
 
     assert pain.top_category == "피곤"
-    assert "conventional" in pain.auxiliary_sources["피곤"]
+    assert pain.auxiliary_sources["피곤"] == ["semantic:distress"]
     assert pain.confidence == "low"
 
     assert tired.top_category == "피곤"
-    assert tired.auxiliary_sources["피곤"] == ["conventional"]
+    assert tired.auxiliary_sources["피곤"] == ["semantic:distress"]
 
 
 def test_rhythmic_ideophone_repetition_does_not_default_to_tired(model):
@@ -151,11 +151,11 @@ def test_short_conventional_reactions_do_not_follow_bright_or_soft_sounds(model)
     angry = model.score("망할")
 
     assert embarrassed.top_category == "당황"
-    assert "conventional" in embarrassed.auxiliary_sources["당황"]
+    assert embarrassed.auxiliary_sources["당황"] == ["semantic:surprise_reaction"]
     assert embarrassed.confidence == "low"
 
     assert angry.top_category == "분노"
-    assert "conventional" in angry.auxiliary_sources["분노"]
+    assert angry.auxiliary_sources["분노"] == ["semantic:negative_reaction"]
     assert angry.confidence == "low"
 
 
