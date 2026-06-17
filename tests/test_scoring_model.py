@@ -23,12 +23,25 @@ def test_top3_length_and_descending(model):
     assert len(result.ranked) == len(CATEGORIES)
 
 
-def test_empty_input_tiebreak_is_category_order(model):
-    # 빈 입력 → 모든 점수 0으로 동점 → CATEGORIES 순서로 정렬
+def test_zero_score_input_ranked_order_and_no_fake_tie(model):
+    # 모든 점수 0인 퇴화 입력: ranked는 CATEGORIES 순서, 가짜 동점은 만들지 않음
     result = model.score("")
     assert [c for c, _ in result.ranked] == CATEGORIES
-    assert result.tie_categories == CATEGORIES
-    assert result.confidence == "low"  # N < min_syllables
+    assert result.tie_categories == ["응원"]  # top_score<=0이면 동점으로 보지 않음
+    assert result.confidence == "low"
+
+
+def test_partial_tie_follows_category_order(model):
+    # 일부 카테고리만 양수 점수로 1위 동점일 때 §3 순서를 따른다
+    result = model.score("죄송")  # 기쁨·감사가 1.0으로 동점
+    assert len(result.tie_categories) >= 2
+    # 동점 그룹이 CATEGORIES 상대 순서를 유지
+    indexed = [CATEGORIES.index(c) for c in result.tie_categories]
+    assert indexed == sorted(indexed)
+    # ranked의 동점 블록도 같은 순서
+    top = result.ranked[0][1]
+    tied_in_ranked = [c for c, s in result.ranked if s == top]
+    assert tied_in_ranked == result.tie_categories
 
 
 def test_confidence_low_for_short_input(model):

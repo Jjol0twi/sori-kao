@@ -96,7 +96,11 @@ class ScoringModel:
         top_category = CATEGORIES[top_idx]
         top_score = scores[top_idx]
 
-        tie = [c for c, s in ranked if s == top_score]
+        # 점수가 모두 0 이하인 퇴화 입력(자모/숫자만 등)은 가짜 동점을 만들지 않는다
+        if top_score > 0:
+            tie = [c for c, s in ranked if s == top_score]
+        else:
+            tie = [top_category]
 
         # 1위 카테고리 기여도(양수만, 내림차순)
         contrib = features * self.weights[top_idx]
