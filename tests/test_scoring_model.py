@@ -85,3 +85,31 @@ def test_invalid_feature_order_raises(tmp_path):
     path.write_text(json.dumps(bad), encoding="utf-8")
     with pytest.raises(ValueError):
         ScoringModel(str(path))
+
+
+def test_contributions_descending_and_match_formula(model):
+    import numpy as np
+    from feature_extractor import FEATURE_NAMES
+
+    result = model.score("아싸아싸!!")
+    values = [v for _, v in result.contributions]
+    assert values == sorted(values, reverse=True)  # 내림차순 정렬
+
+    # 첫 항목 = x[i] * W[top][i] 중 최대
+    top_idx = CATEGORIES.index(result.top_category)
+    contrib = result.features * model.weights[top_idx]
+    name, val = result.contributions[0]
+    assert val == pytest.approx(contrib[FEATURE_NAMES.index(name)])
+    assert val == pytest.approx(float(np.max(contrib)))
+
+
+def test_auxiliary_cap_on_jamo_and_keyword_mix(model):
+    # 힘들(키워드 0.3) + ㅠ 반복(자모 0.3) = 0.6 → 상한 0.5로 잘림
+    result = model.score("힘들ㅠㅠㅠ")
+    assert result.auxiliary["피곤"] == pytest.approx(0.5)
+
+
+def test_keyword_dependent_input_is_low_confidence(model):
+    # 음운 점수가 약하고 키워드 보너스가 1위를 좌우하면 low
+    result = model.score("힘들")
+    assert result.confidence == "low"
