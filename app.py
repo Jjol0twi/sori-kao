@@ -19,12 +19,7 @@ from scoring_model import ScoringModel, ScoreResult
 from theme import Theme, detect_mode
 
 _EMPTY = "empty"  # 빈 입력 상태 표식
-_EDIT_SHORTCUTS = (
-    ("a", "<<SelectAll>>"),
-    ("c", "<<Copy>>"),
-    ("v", "<<Paste>>"),
-    ("x", "<<Cut>>"),
-)
+_EDIT_SHORTCUTS = ("a", "c", "v", "x")
 
 
 @dataclass
@@ -42,9 +37,55 @@ def analyze(text: str, model: ScoringModel, recommender: KaomojiRecommender):
     return Analysis(score, recommender.recommend(score), build_explanation(score))
 
 
-def _forward_text_edit_event(virtual_event: str):
+def _safe_selection_present(entry):
+    try:
+        return entry.selection_present()
+    except (tk.TclError, AttributeError):
+        return False
+
+
+def _safe_selection_text(entry):
+    try:
+        return entry.selection_get()
+    except (tk.TclError, AttributeError, ValueError):
+        return ""
+
+
+def _delete_selection(entry):
+    if not _safe_selection_present(entry):
+        return
+    try:
+        entry.delete("sel.first", "sel.last")
+    except (tk.TclError, AttributeError, ValueError):
+        pass
+
+
+def _make_text_edit_handler(action: str):
     def handler(event):
-        event.widget.event_generate(virtual_event)
+        entry = event.widget
+
+        if action == "a":
+            entry.selection_range(0, "end")
+            entry.icursor("end")
+        elif action == "c":
+            selected = _safe_selection_text(entry)
+            if selected:
+                entry.clipboard_clear()
+                entry.clipboard_append(selected)
+        elif action == "v":
+            try:
+                text = entry.clipboard_get()
+            except (tk.TclError, AttributeError, ValueError):
+                text = ""
+            if text:
+                _delete_selection(entry)
+                entry.insert("insert", text)
+        elif action == "x":
+            selected = _safe_selection_text(entry)
+            if selected:
+                entry.clipboard_clear()
+                entry.clipboard_append(selected)
+                _delete_selection(entry)
         return "break"
 
     return handler
@@ -60,11 +101,10 @@ def bind_text_edit_shortcuts(entry, is_macos: bool = None):
         modifiers.append("Command")
 
     for modifier in modifiers:
-        for key, virtual_event in _EDIT_SHORTCUTS:
-            entry.bind(
-                f"<{modifier}-{key}>",
-                _forward_text_edit_event(virtual_event),
-            )
+        for key in _EDIT_SHORTCUTS:
+            handler = _make_text_edit_handler(key)
+            entry.bind(f"<{modifier}-{key}>", handler)
+            entry.bind(f"<{modifier}-{key.upper()}>", handler)
 
 
 class KaomojiApp:
