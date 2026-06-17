@@ -144,3 +144,22 @@ def test_rhythmic_ideophone_repetition_does_not_default_to_tired(model):
     result = model.score("구르구르")
     assert result.top_category == "장난"
     assert result.confidence == "high"
+
+
+def test_short_conventional_reactions_do_not_follow_bright_or_soft_sounds(model):
+    embarrassed = model.score("이런")
+    angry = model.score("망할")
+
+    assert embarrassed.top_category == "당황"
+    assert "conventional" in embarrassed.auxiliary_sources["당황"]
+    assert embarrassed.confidence == "low"
+
+    assert angry.top_category == "분노"
+    assert "conventional" in angry.auxiliary_sources["분노"]
+    assert angry.confidence == "low"
+
+
+def test_laughter_jamo_prefers_play_over_generic_joy(model):
+    result = model.score("ㄹㅇㅋㅋ")
+    assert result.top_category == "장난"
+    assert result.auxiliary_sources["장난"] == ["jamo"]
