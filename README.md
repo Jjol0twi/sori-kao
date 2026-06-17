@@ -92,8 +92,8 @@ Tk 버전 확인: `python -c "import tkinter; print(tkinter.TkVersion)"` → **8
 ### 테스트
 
 ```bash
-uv run --with pytest python -m pytest
-# 또는 venv 활성화 후: pip install pytest && python -m pytest
+uv run --with pytest --with numpy python -m pytest
+# 또는 venv 활성화 후: pip install numpy pytest && python -m pytest
 ```
 
 ## 한계
