@@ -41,8 +41,14 @@ class KaomojiApp:
 
         root.title("sori-kao — 음운 카모지 추천")
         root.configure(bg=self.BG)
+        root.geometry("480x150")  # 시작 시 작은 창(이후 내용에 맞춰 재조정)
 
-        input_frame = tk.Frame(root, bg=self.BG, padx=16, pady=14)
+        # 시스템 다크모드와 무관하게 밝은 배경을 보장하는 컨테이너
+        container = tk.Frame(root, bg=self.BG)
+        container.pack(fill="both", expand=True)
+        self.container = container
+
+        input_frame = tk.Frame(container, bg=self.BG, padx=16, pady=14)
         input_frame.pack(fill="x")
 
         tk.Label(
@@ -52,8 +58,15 @@ class KaomojiApp:
 
         entry_row = tk.Frame(input_frame, bg=self.BG)
         entry_row.pack(fill="x", pady=(6, 0))
-        self.entry = tk.Entry(entry_row, font=("", 15), width=24)
-        self.entry.pack(side="left", fill="x", expand=True, ipady=4)
+        # 다크모드에서도 보이도록 흰 배경·검은 글자를 명시
+        self.entry = tk.Entry(
+            entry_row, font=("", 15), width=24,
+            bg="white", fg="#111", insertbackground="#111",
+            relief="solid", borderwidth=1,
+            highlightthickness=1, highlightbackground="#bbb",
+            highlightcolor="#4a90d9",
+        )
+        self.entry.pack(side="left", fill="x", expand=True, ipady=5)
         self.entry.bind("<Return>", lambda _e: self.on_submit())
         self.entry.focus_set()
         tk.Button(
@@ -63,14 +76,15 @@ class KaomojiApp:
             entry_row, text="초기화", command=self.on_reset, font=("", 12),
         ).pack(side="left", padx=(6, 0))
 
-        self.toast = tk.Label(root, text="", bg=self.BG, fg="#2a7", font=("", 10))
+        self.toast = tk.Label(container, text="", bg=self.BG, fg="#2a7", font=("", 10))
         self.toast.pack()
 
         # 결과 영역(처음에는 숨김; 첫 추천 때 pack)
-        self.result_frame = tk.Frame(root, bg=self.BG, padx=16, pady=8)
+        self.result_frame = tk.Frame(container, bg=self.BG, padx=16, pady=8)
         self._result_shown = False
 
-        self._refit()  # 시작은 입력창 크기에 맞춘 작은 창
+        # 창이 화면에 그려진 뒤 입력창 크기에 맞춰 작게 맞춘다(macOS 타이밍)
+        self.root.after(120, self._refit)
 
     # ---- 동작 ----
     def on_submit(self):
