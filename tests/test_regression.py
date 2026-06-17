@@ -82,7 +82,17 @@ def test_holdout_hit_rate(model):
 def test_strong_cases_always_hold(model):
     assert "응원" in _top3(model, "아싸아싸!!")
     assert model.score("고마워요ㅎㅎ").top_category == "감사"
+    assert model.score("고맙습니다").top_category == "감사"
+    assert model.score("ㅋㅋㅋ").top_category == "장난"
+    assert model.score("ㅋㅋㅋㅋ 뭐야").top_category in {"장난", "기쁨"}
     assert _top3(model, "빡세다 진짜!") & {"분노", "집중", "긴장"}
+
+
+def test_apology_keywords_stay_visible(model):
+    # 밝은 모음·말줄임표가 있어도 명시적 사과 신호가 Top-3에서 사라지면 안 된다.
+    assert "사과" in _top3(model, "죄송")
+    assert model.score("죄송합니다...").top_category == "사과"
+    assert model.score("미안해 정말").top_category == "사과"
 
 
 def test_low_confidence_for_ambiguous(model):

@@ -32,10 +32,10 @@ BRIGHT_VOWELS = set("ㅏㅐㅑㅒㅗㅘㅙㅚㅛ")
 DARK_VOWELS = set("ㅓㅔㅕㅖㅜㅝㅞㅟㅠ")
 NEUTRAL_VOWELS = set("ㅡㅢㅣ")
 
-# 자음 분류(초성 기준) — design.md §6. ㅎ은 어디에도 세지 않는다.
+# 자음 분류(초성 기준) — design.md §6. 초성 ㅇ은 소리값이 없어 세지 않는다.
 TENSE_CONSONANTS = set("ㄲㄸㅃㅆㅉ")
 ASPIRATED_CONSONANTS = set("ㅋㅌㅍㅊ")
-NASAL_LIQUID_CONSONANTS = set("ㄴㅁㅇㄹ")
+NASAL_LIQUID_CONSONANTS = set("ㄴㅁㄹ")
 
 S_FINALS = {"ㅅ", "ㅆ"}
 
@@ -58,16 +58,20 @@ def _syllable_repetition(chars) -> float:
     return sum(marked) / n
 
 
+ELLIPSIS_CHARS = {".", "…"}
+
+
 def _char_repetition(text: str) -> float:
-    """같은 문자가 3회 이상 연속된 비율(자모·부호 포함)."""
-    total = len(text)
+    """같은 문자가 3회 이상 연속된 비율(자모·부호 포함, 말줄임표 제외)."""
+    chars = [ch for ch in text if ch not in ELLIPSIS_CHARS]
+    total = len(chars)
     if total == 0:
         return 0.0
     repeated = 0
     i = 0
     while i < total:
         j = i
-        while j < total and text[j] == text[i]:
+        while j < total and chars[j] == chars[i]:
             j += 1
         if j - i >= 3:
             repeated += j - i

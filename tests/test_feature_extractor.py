@@ -69,6 +69,13 @@ def test_punctuation_energy_split_and_saturation():
     assert _feat("!!!", "question_energy") == 0.0
 
 
+def test_ellipsis_not_counted_as_generic_char_repetition():
+    # 말줄임표는 ellipsis_energy 전용 신호이며, 밝은/응원 계열 반복 점수를 올리지 않는다.
+    assert _feat("...", "char_repetition") == 0.0
+    assert _feat("…", "char_repetition") == 0.0
+    assert _feat("!!!", "char_repetition") == 1.0
+
+
 def test_long_input_stays_normalized():
     vec = extract_features_from_text("아" * 200 + "!" * 50)
     assert (vec <= 1).all()
@@ -91,6 +98,11 @@ def test_h_initial_excluded_from_consonant_classes():
     assert _feat("하", "tense_consonant_ratio") == 0.0
     assert _feat("하", "aspirated_consonant_ratio") == 0.0
     assert _feat("하", "nasal_liquid_ratio") == 0.0
+
+
+def test_initial_ieung_excluded_from_nasal_liquid_ratio():
+    # 초성 ㅇ은 소리값이 없으므로 비음·유음 비율에 넣지 않는다
+    assert _feat("아", "nasal_liquid_ratio") == 0.0
 
 
 def test_neutral_vowel_value():
