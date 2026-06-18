@@ -159,6 +159,14 @@ def test_short_conventional_reactions_do_not_follow_bright_or_soft_sounds(model)
     assert angry.confidence == "low"
 
 
+def test_pleading_request_does_not_become_high_confidence_thanks(model):
+    result = model.score("가지마")
+
+    assert result.top_category == "긴장"
+    assert result.auxiliary_sources["긴장"] == ["semantic:pleading_request"]
+    assert result.confidence == "low"
+
+
 def test_laughter_jamo_prefers_play_over_generic_joy(model):
     result = model.score("ㄹㅇㅋㅋ")
     assert result.top_category == "장난"

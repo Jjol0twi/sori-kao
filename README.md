@@ -40,6 +40,7 @@ sori-kao/
 ├── pyproject.toml            # Python/NumPy 의존성 선언
 ├── uv.lock                   # uv 의존성 잠금 파일
 ├── app.py                    # tkinter GUI + 전체 흐름
+├── theme.py                  # GUI 색상·폰트·여백 테마
 ├── hangul_decomposer.py      # 한글 음절 → 초성·중성·종성
 ├── text_preprocessor.py      # 입력 분류(음절/자모/부호/기타)
 ├── feature_extractor.py      # 14차원 음운 특징 벡터
@@ -53,7 +54,9 @@ sori-kao/
 └── docs/
     ├── development-goal.md    # 기획서
     ├── design.md             # 설계서
-    ├── build-prompt.md       # 구현 지시 프롬프트
+    ├── review-refactor-prompt.md # 검토·리팩터링 프롬프트
+    ├── rebuild-goal-prompt.md # 기획서 기준 재구현 목표 프롬프트
+    ├── build-prompt.md       # 구현 지시 프롬프트(로컬 내부 문서)
     └── git-conventions.md    # 커밋 컨벤션
 ```
 
@@ -105,7 +108,7 @@ uv run --with pytest python -m pytest
 
 - 음운 특징과 감정의 관계는 **절대 규칙이 아니라 경향**이다. 추천 이유는 감정 판정이 아니라 점수 계산 근거를 보여주는 설명이다.
 - `죄송`처럼 입력이 짧거나 키워드에 크게 의존하는 입력은 기대 카테고리가 1위에 안 들 수 있다. 이런 입력은 **낮은 신뢰도**로 표시한다.
-- `하암`, `이런`, `망할`, `아프다`, `힘들어`처럼 소리 특징만으로 뜻을 구분하기 어려운 표현은 `semantic_hints`의 중간 태그로 보정하되, 낮은 신뢰도로 표시한다.
+- `하암`, `가지마`, `이런`, `망할`, `아프다`, `힘들어`처럼 소리 특징만으로 뜻을 구분하기 어려운 표현은 `semantic_hints`의 중간 태그로 보정하되, 낮은 신뢰도로 표시한다.
 - `구르구르` 같은 반복 의태어가 모두 피곤으로 쏠리지 않도록, 반복은 감정 정답이 아니라 강조·리듬 신호로만 다룬다.
 - 회귀 테스트는 심리학적 정확도 검증이 아니라, 설계한 규칙과 구현 결과가 대체로 일치하는지 확인하기 위한 용도다.
 
@@ -113,6 +116,8 @@ uv run --with pytest python -m pytest
 
 - [기획서](docs/development-goal.md) — 배경·차별점·MVP 범위·반례·평가 기준
 - [설계서](docs/design.md) — 분해/특징/점수/신뢰도/데이터 스키마/GUI 명세
+- [검토·리팩터링 프롬프트](docs/review-refactor-prompt.md) — 구현 검토와 재정렬 기준
+- [재구현 목표 프롬프트](docs/rebuild-goal-prompt.md) — 기획서 기준 재구현·검증 절차
 - [구현 프롬프트](docs/build-prompt.md) — 위 문서를 구현 계약으로 정리
 - [커밋 컨벤션](docs/git-conventions.md) — Conventional Commits 규칙
 

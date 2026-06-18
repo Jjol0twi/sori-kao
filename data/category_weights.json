@@ -52,6 +52,10 @@
     "negative_reaction": {
       "patterns": ["망할", "망했", "망했다", "짜증", "빡치", "화나"],
       "category_bonus": { "분노": 1.1 }
+    },
+    "pleading_request": {
+      "patterns": ["가지\\s*마", "떠나지\\s*마", "가면\\s*안"],
+      "category_bonus": { "긴장": 1.0 }
     }
   }
 }
