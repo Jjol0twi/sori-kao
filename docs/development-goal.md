@@ -1,4 +1,4 @@
-# 개발 목표 문서: 한국어 음운 상징 기반 카모지 추천 앱
+# 개발 목표 문서: 한국어 음운 특징과 관습 표현을 활용한 규칙 기반 카모지 추천 앱
 
 ## 1. 프로젝트 한줄 목표
 
@@ -176,19 +176,23 @@ MVP 이후에는 다음 방향으로 확장할 수 있다.
 - 추천 카테고리와 카모지 목록을 CSV/JSON으로 편집 가능하게 만들기
 - 한국어 외 일본어 의성어·의태어와 비교하는 확장 연구
 
-## 11. Python 파일 구조 초안
+## 11. 현재 구현 파일 구조
 
-아직 코드를 작성하지 않고, 구현 단계에서 사용할 파일 구조만 다음처럼 계획한다.
+현재 구현된 주요 파일 구조는 다음과 같다.
 
 ```text
 final/
+├── README.md
 ├── docs/
 │   ├── development-goal.md
-│   └── design.md
+│   ├── design.md
+│   └── review-refactor-prompt.md
 ├── pyproject.toml
 ├── uv.lock
 ├── app.py
+├── theme.py
 ├── hangul_decomposer.py
+├── text_preprocessor.py
 ├── feature_extractor.py
 ├── scoring_model.py
 ├── recommender.py
@@ -197,9 +201,15 @@ final/
 │   ├── category_weights.json
 │   └── kaomoji_catalog.json
 └── tests/
-    ├── test_hangul_decomposer.py
+    ├── test_app_shortcuts.py
+    ├── test_data_contract.py
+    ├── test_explanation.py
     ├── test_feature_extractor.py
-    └── test_scoring_model.py
+    ├── test_hangul_decomposer.py
+    ├── test_recommender.py
+    ├── test_regression.py
+    ├── test_scoring_model.py
+    └── test_text_preprocessor.py
 ```
 
 ## 12. 기획서 비판적 검토 요약
