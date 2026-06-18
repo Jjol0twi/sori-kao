@@ -5,6 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import app
 from app import bind_text_edit_shortcuts
 
 
@@ -99,3 +100,16 @@ def test_input_entry_binds_control_edit_shortcuts():
     entry.cursor = len(entry.text)
     assert entry.bindings["<Control-v>"](FakeEvent(entry)) == "break"
     assert entry.text == "hello!"
+
+
+def test_main_reports_tk_runtime_error(monkeypatch, capsys):
+    def fail_tk():
+        raise app.tk.TclError("missing init.tcl")
+
+    monkeypatch.setattr(app.tk, "Tk", fail_tk)
+
+    assert app.main() == 1
+
+    captured = capsys.readouterr()
+    assert "Tk GUI를 시작할 수 없습니다" in captured.err
+    assert "missing init.tcl" in captured.err

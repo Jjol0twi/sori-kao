@@ -329,10 +329,21 @@ def main():
             "쓰세요. 자세한 내용은 README의 '실행' 참고.",
             file=sys.stderr,
         )
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:
+        print(
+            "[오류] Tk GUI를 시작할 수 없습니다. Tcl/Tk 런타임이 없거나 Python이 "
+            "TCL_LIBRARY/TK_LIBRARY 경로를 찾지 못한 상태입니다. README의 '실행' "
+            "섹션에서 Tk 런타임 확인 방법을 참고하세요.",
+            file=sys.stderr,
+        )
+        print(f"[원인] {exc}", file=sys.stderr)
+        return 1
     KaomojiApp(root)
     root.mainloop()
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
