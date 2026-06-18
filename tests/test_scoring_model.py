@@ -33,7 +33,7 @@ def test_zero_score_input_ranked_order_and_no_fake_tie(model):
 
 def test_partial_tie_follows_category_order(model):
     # 일부 카테고리만 양수 점수로 1위 동점일 때 §3 순서를 따른다
-    result = model.score("죄송")  # 기쁨·감사가 1.0으로 동점
+    result = model.score("ㄷㄷ")  # 당황·긴장이 같은 자모 보조 점수로 동점
     assert len(result.tie_categories) >= 2
     # 동점 그룹이 CATEGORIES 상대 순서를 유지
     indexed = [CATEGORIES.index(c) for c in result.tie_categories]
@@ -149,6 +149,7 @@ def test_rhythmic_ideophone_repetition_does_not_default_to_tired(model):
 def test_short_conventional_reactions_do_not_follow_bright_or_soft_sounds(model):
     embarrassed = model.score("이런")
     angry = model.score("망할")
+    angry_word = model.score("화나")
 
     assert embarrassed.top_category == "당황"
     assert embarrassed.auxiliary_sources["당황"] == ["semantic:surprise_reaction"]
@@ -157,6 +158,10 @@ def test_short_conventional_reactions_do_not_follow_bright_or_soft_sounds(model)
     assert angry.top_category == "분노"
     assert angry.auxiliary_sources["분노"] == ["semantic:negative_reaction"]
     assert angry.confidence == "low"
+
+    assert angry_word.top_category == "분노"
+    assert angry_word.auxiliary_sources["분노"] == ["semantic:negative_reaction"]
+    assert angry_word.confidence == "low"
 
 
 def test_pleading_request_does_not_become_high_confidence_thanks(model):
@@ -171,3 +176,38 @@ def test_laughter_jamo_prefers_play_over_generic_joy(model):
     result = model.score("ㄹㅇㅋㅋ")
     assert result.top_category == "장난"
     assert result.auxiliary_sources["장난"] == ["jamo"]
+
+
+def test_distress_words_do_not_get_overruled_by_bright_vowels(model):
+    tired = model.score("피곤하다")
+    pain = model.score("아프다")
+    hungry = model.score("배고파")
+
+    assert tired.top_category == "피곤"
+    assert tired.auxiliary_sources["피곤"] == ["semantic:distress"]
+    assert tired.confidence == "low"
+
+    assert pain.top_category == "피곤"
+    assert pain.auxiliary_sources["피곤"] == ["semantic:distress"]
+    assert pain.confidence == "low"
+
+    assert hungry.top_category == "피곤"
+    assert hungry.auxiliary_sources["피곤"] == ["semantic:distress"]
+    assert hungry.confidence == "low"
+
+
+def test_surprise_words_do_not_get_overruled_by_bright_vowels(model):
+    result = model.score("놀랐잖아")
+
+    assert result.top_category == "당황"
+    assert result.auxiliary_sources["당황"] == ["semantic:surprise_reaction"]
+    assert result.confidence == "low"
+
+
+def test_crying_jamo_repetition_does_not_become_play(model):
+    result = model.score("ㅠㅠㅠ")
+
+    assert result.top_category in {"피곤", "긴장", "사과"}
+    assert result.top_category != "장난"
+    assert result.auxiliary_sources[result.top_category] == ["jamo"]
+    assert result.confidence == "low"

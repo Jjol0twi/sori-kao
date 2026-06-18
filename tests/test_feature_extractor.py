@@ -55,10 +55,12 @@ def test_final_consonant_features():
     assert _feat("앗", "final_s_ratio") == 1.0
 
 
-def test_char_repetition_includes_jamo_and_punct():
-    # 자모만 입력도 char_repetition으로 잡힌다(N=0이어도 안전)
-    assert _feat("ㅋㅋㅋ", "char_repetition") == 1.0
-    assert _feat("!!!", "char_repetition") == 1.0
+def test_char_repetition_does_not_turn_jamo_only_input_into_play():
+    # 자모만 반복된 입력은 자모 보조 신호에서 다루고, 일반 반복 장난 점수에는 넣지 않는다.
+    assert _feat("ㅋㅋㅋ", "char_repetition") == 0.0
+    assert _feat("ㅠㅠㅠ", "char_repetition") == 0.0
+    assert _feat("!!!", "char_repetition") == 0.0
+    assert _feat("아!!!", "char_repetition") == 0.75
 
 
 def test_punctuation_energy_split_and_saturation():
@@ -73,7 +75,7 @@ def test_ellipsis_not_counted_as_generic_char_repetition():
     # 말줄임표는 ellipsis_energy 전용 신호이며, 밝은/응원 계열 반복 점수를 올리지 않는다.
     assert _feat("...", "char_repetition") == 0.0
     assert _feat("…", "char_repetition") == 0.0
-    assert _feat("!!!", "char_repetition") == 1.0
+    assert _feat("아!!!", "char_repetition") == 0.75
 
 
 def test_long_input_stays_normalized():

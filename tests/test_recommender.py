@@ -54,7 +54,7 @@ def test_low_confidence_trims_secondary(rec, model):
 
 
 def test_tie_produces_two_columns(rec, model):
-    result = model.score("죄송")  # 기쁨·감사 1위 동점
+    result = model.score("ㄷㄷ")  # 당황·긴장이 같은 자모 보조 점수로 동점
     rec_out = rec.recommend(result)
     assert len(rec_out.tie) >= 2
     assert rec_out.primary_category == result.tie_categories[0]

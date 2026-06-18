@@ -103,8 +103,9 @@ def extract_features(result: PreprocessResult) -> np.ndarray:
         vec[8] = sum(j in S_FINALS for j in jong) / n
 
     # 반복과 문장부호는 감정 자체가 아니라 강도·리듬·머뭇거림의 흔적으로만 쓴다.
+    # ㅋㅋ/ㅠㅠ처럼 완성형 음절이 없는 입력은 자모 보조 신호에서만 해석해 장난 쏠림을 막는다.
     vec[9] = _syllable_repetition(result.syllable_chars)
-    vec[10] = _char_repetition(result.repetition_chars)
+    vec[10] = _char_repetition(result.repetition_chars) if n > 0 else 0.0
     vec[11] = min(result.exclaim_count, 3) / 3
     vec[12] = min(result.question_count, 3) / 3
     vec[13] = min(result.ellipsis_count, 3) / 3
