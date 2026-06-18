@@ -1,4 +1,4 @@
-"""입력에서 14차원 음운 특징 벡터를 뽑는다(build-prompt §6, design.md §5).
+"""입력에서 14차원 음운 특징 벡터를 뽑는다.
 
 인덱스 순서는 :data:`FEATURE_NAMES`로 고정되며 `category_weights.json`의
 `_meta.feature_order`와 1:1로 일치해야 한다. 모든 값은 [0, 1]로 정규화한다.

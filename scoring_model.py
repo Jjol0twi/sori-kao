@@ -1,4 +1,4 @@
-"""카테고리 점수를 NumPy로 계산하고 Top-3·신뢰도를 산출한다(build-prompt §8).
+"""카테고리 점수를 NumPy로 계산하고 Top-3·신뢰도를 산출한다.
 
 점수식: ``category_scores = x @ W.T + bias + auxiliary_bonus``
 
@@ -16,7 +16,7 @@ import numpy as np
 from feature_extractor import FEATURE_NAMES, extract_features
 from text_preprocessor import PreprocessResult, preprocess
 
-# 카테고리 순서 고정(동점 타이브레이크·출력 정렬 기준) — build-prompt §3
+# 카테고리 순서는 동점 타이브레이크와 출력 정렬 기준으로 고정한다.
 CATEGORIES = [
     "응원", "기쁨", "당황", "분노", "긴장", "피곤", "장난", "사과", "감사", "집중",
 ]
