@@ -2,6 +2,9 @@
 
 1위 카테고리에서 작음/보통/큼 각 1개를 카탈로그 등록 순서상 첫 항목으로 고른다.
 무작위를 쓰지 않아 같은 입력은 항상 같은 카모지를 보여준다.
+
+이 단계는 점수를 다시 해석하지 않고, 이미 정해진 카테고리를 화면에 보여줄
+표현물로만 바꾼다.
 """
 
 import json
@@ -24,7 +27,7 @@ class Recommendation:
 
 
 class KaomojiRecommender:
-    """`kaomoji_catalog.json`에서 카테고리별 카모지를 결정적으로 고른다."""
+    """점수 모델과 분리된 카모지 카탈로그를 결정적으로 조회한다."""
 
     def __init__(self, catalog_path: str = _DEFAULT_CATALOG):
         with open(catalog_path, encoding="utf-8") as f:
@@ -32,7 +35,7 @@ class KaomojiRecommender:
         self.catalog = {k: v for k, v in data.items() if k != "_meta"}
 
     def select_by_size(self, category: str) -> dict:
-        """카테고리에서 작음/보통/큼 카모지를 1개씩 고른다(없으면 인접 크기로 대체)."""
+        """같은 카테고리 안에서 표현 크기만 달리해 사용자가 고를 여지를 남긴다."""
         entries = self.catalog.get(category, [])
         first_by_size = {}
         for entry in entries:
@@ -44,12 +47,12 @@ class KaomojiRecommender:
         return {size: first_by_size.get(size, fallback) for size in SIZES}
 
     def recommend(self, score_result) -> Recommendation:
-        """:class:`ScoreResult`에서 추천 카모지 구조를 만든다."""
+        """점수 결과를 재현 가능한 추천 목록으로 고정한다."""
         tie_categories = score_result.tie_categories
         primary = tie_categories[0]
         tie = [(c, self.select_by_size(c)) for c in tie_categories]
         secondary = [c for c, _ in score_result.top3 if c not in tie_categories]
-        # 신뢰도가 낮은(짧거나 모호한) 입력은 과도한 확신을 피해 후보를 1~2개로 줄인다
+        # 낮은 신뢰도 입력은 많이 보여주는 대신, 조심스러운 후보처럼 보이게 줄인다.
         if score_result.confidence == "low":
             secondary = secondary[:1]
         return Recommendation(

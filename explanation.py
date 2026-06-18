@@ -2,11 +2,14 @@
 
 실제 점수에 기여한 특징만 사용하고, 단정 대신 "점수 반영"으로 표현한다.
 보조 키워드/자모/관습 표현이 쓰였으면 보조 신호로 표시하고, 신뢰도가 낮으면 완화한다.
+
+설명은 모델을 그럴듯하게 포장하는 문장이 아니라, 어떤 규칙이 결과를 밀었는지
+사용자와 보고서 독자가 확인할 수 있게 하는 방어 장치다.
 """
 
 from dataclasses import dataclass, field
 
-# 특징 → 설명 문장(design.md §10 확장). 점수에 실제로 기여한 특징만 쓴다.
+# 설명 문장은 점수에 실제로 등장한 특징과만 연결해 과잉 해석을 피한다.
 EXPLANATION_TEMPLATES = {
     "bright_vowel_ratio": "밝은 모음 비율이 높아 긍정적·가벼운 인상 점수가 올라갔습니다.",
     "dark_vowel_ratio": "어두운 모음 비율이 높아 무겁거나 지친 인상 점수가 반영되었습니다.",
@@ -46,7 +49,7 @@ class Explanation:
 
 
 def build_explanation(score_result) -> Explanation:
-    """:class:`ScoreResult`에서 추천 이유를 만든다(이유 2개 이상 보장)."""
+    """점수 결과를 사용자가 읽을 수 있는 근거 문장으로 낮춘다."""
     reasons = []
     contribution_names = [name for name, _ in score_result.contributions[:4]]
     for name, _ in score_result.contributions[:4]:
@@ -60,13 +63,15 @@ def build_explanation(score_result) -> Explanation:
     )
     semantic_used = _has_semantic_source(aux_sources)
     if semantic_used:
+        # 의미 힌트가 개입한 경우, 순수 음운 추천처럼 보이지 않도록 명시한다.
         reasons.append(_CONVENTIONAL_SENTENCE)
     if aux_used and ({source for source in aux_sources} & {"keyword", "jamo"}):
+        # 키워드·자모 보정도 숨기지 않는다. 이 프로젝트의 강점은 설명 가능성이다.
         reasons.append(_AUX_SENTENCE)
     if aux_used and not aux_sources:
         reasons.append(_AUX_SENTENCE)
 
-    # 이유 2개 이상 보장(완료 기준)
+    # 데모와 보고서에서 빈 설명이 나오지 않게 하되, 근거가 약하면 약하다고 말한다.
     if not reasons:
         reasons.append(_LOW_SIGNAL_SENTENCE)
     if semantic_used and len(reasons) < 2:

@@ -5,6 +5,9 @@
 - 호환 자모 단독(`ㅋ`,`ㅠ`): 음운 벡터에는 안 쓰고 자모 패턴/반복에만 기여한다.
 - 문장부호(`!`,`?`,`…`/`...`): energy 특징으로만 쓴다.
 - 영문·숫자·이모지: 무시한다.
+
+이 단계의 의도는 의미 해석을 바로 시작하지 않고, 소리로 볼 부분과 채팅 관습으로
+볼 부분을 먼저 분리하는 것이다.
 """
 
 from dataclasses import dataclass, field
@@ -23,10 +26,10 @@ def is_compat_jamo(ch: str) -> bool:
 
 @dataclass
 class PreprocessResult:
-    syllables: list = field(default_factory=list)        # 분해된 완성형 음절
-    syllable_chars: list = field(default_factory=list)   # 완성형 원문 글자(반복 탐지용)
-    jamo: list = field(default_factory=list)             # 단독 호환 자모
-    repetition_chars: str = ""                           # char_repetition 대상(공백 제외 전체)
+    syllables: list = field(default_factory=list)        # 음운 벡터로 보낼 완성형 음절
+    syllable_chars: list = field(default_factory=list)   # 음절 반복은 원문 글자 흐름에서 잡는다
+    jamo: list = field(default_factory=list)             # ㅋㅋ/ㅠㅠ처럼 소리보다 관습에 가까운 신호
+    repetition_chars: str = ""                           # 반복 리듬은 자모·부호까지 포함해 별도 축으로 본다
     exclaim_count: int = 0
     question_count: int = 0
     ellipsis_count: int = 0
@@ -54,9 +57,10 @@ def _count_ellipsis(text: str) -> int:
 
 
 def preprocess(text: str) -> PreprocessResult:
-    """입력 문자열을 :class:`PreprocessResult`로 분류한다."""
+    """뒤 단계가 같은 입력을 서로 다르게 읽지 않도록 분석 재료를 고정한다."""
     result = PreprocessResult()
     for ch in text:
+        # 완성형 한글은 음운 분석으로 보내고, 단독 자모는 의미가 아니라 표현 관습으로 남긴다.
         syllable = decompose_syllable(ch)
         if syllable is not None:
             result.syllables.append(syllable)

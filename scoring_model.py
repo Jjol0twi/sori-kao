@@ -1,6 +1,9 @@
 """카테고리 점수를 NumPy로 계산하고 Top-3·신뢰도를 산출한다(build-prompt §8).
 
 점수식: ``category_scores = x @ W.T + bias + auxiliary_bonus``
+
+음운 벡터, 채팅 관습, 제한적인 의미 힌트를 여기서만 합쳐서 "AI 해석"이 아니라
+추적 가능한 규칙 점수로 남긴다.
 """
 
 import json
@@ -18,7 +21,7 @@ CATEGORIES = [
     "응원", "기쁨", "당황", "분노", "긴장", "피곤", "장난", "사과", "감사", "집중",
 ]
 
-# 자모 반복 패턴 → 보너스 대상 카테고리 — build-prompt §7
+# ㅋㅋ/ㅠㅠ 같은 단독 자모는 음운 분해 대상이 아니라 채팅에서 굳어진 표현 신호로 본다.
 JAMO_PATTERNS = {
     "ㅋ": ["장난"],
     "ㅎ": ["기쁨", "감사"],
@@ -49,7 +52,7 @@ class ScoreResult:
 
 
 class ScoringModel:
-    """`category_weights.json`을 로드해 입력을 점수화한다."""
+    """문서에 적은 규칙과 JSON 가중치를 실행 가능한 점수식으로 연결한다."""
 
     def __init__(self, config_path: str = _DEFAULT_CONFIG):
         with open(config_path, encoding="utf-8") as f:
@@ -72,7 +75,7 @@ class ScoringModel:
         self.score_gap_ratio = meta["confidence"]["score_gap_ratio"]
 
     def _auxiliary_bonus(self, text: str, jamo: list) -> dict:
-        """키워드·자모 패턴 보너스를 카테고리별 합산하고 상한으로 자른다."""
+        """음운만으로 구분하기 어려운 관습 신호를 제한된 보너스로만 보탠다."""
         bonus = {c: 0.0 for c in CATEGORIES}
         sources = {c: [] for c in CATEGORIES}
 
@@ -82,17 +85,20 @@ class ScoringModel:
 
         for keyword, info in self.aux_keywords.items():
             if keyword in text:
+                # 감사/미안처럼 명시적인 표현은 시연 안정성을 위해 약하게 보정한다.
                 bonus[info["category"]] += info["bonus"]
                 add_source(info["category"], "keyword")
         for jamo_char, categories in JAMO_PATTERNS.items():
             if jamo.count(jamo_char) >= JAMO_MIN_REPEAT:
                 for category in categories:
+                    # 자모 반복은 소리값보다 채팅 관습에 가까우므로 출처를 따로 남긴다.
                     bonus[category] += JAMO_PATTERN_BONUS
                     add_source(category, "jamo")
         bonus = {c: min(b, self.aux_cap) for c, b in bonus.items()}
         for tag, info in self.semantic_hints.items():
             if any(re.search(pattern, text) for pattern in info["patterns"]):
                 for category, category_bonus in info["category_bonus"].items():
+                    # 하암/망할처럼 음운만으로 오판하기 쉬운 표현은 태그 단위로만 보정한다.
                     bonus[category] = min(
                         bonus[category] + category_bonus, self.semantic_cap
                     )
@@ -100,13 +106,14 @@ class ScoringModel:
         return bonus, sources
 
     def score(self, text: str, result: PreprocessResult = None) -> ScoreResult:
-        """입력 문자열을 점수화해 :class:`ScoreResult`를 반환한다."""
+        """분리되어 있던 음운·보조 신호를 최종 카테고리 점수로 합친다."""
         if result is None:
             result = preprocess(text)
         features = extract_features(result)
 
         aux, aux_sources = self._auxiliary_bonus(text, result.jamo)
         aux_vec = np.array([aux[c] for c in CATEGORIES], dtype=float)
+        # 최종 점수 합성은 이 한 줄에 모아 두어, 설명과 테스트가 같은 근거를 보게 한다.
         scores = self.weights @ features + self.bias + aux_vec
 
         # 점수 내림차순, 동점은 CATEGORIES 순서로 타이브레이크
@@ -122,7 +129,7 @@ class ScoringModel:
         else:
             tie = [top_category]
 
-        # 1위 카테고리 기여도(양수만, 내림차순)
+        # 추천 이유는 실제 양수 기여도에서만 고른다. 없는 근거를 문장으로 꾸미지 않기 위해서다.
         contrib = features * self.weights[top_idx]
         contributions = sorted(
             ((FEATURE_NAMES[i], float(contrib[i])) for i in range(len(FEATURE_NAMES))),
@@ -147,7 +154,7 @@ class ScoringModel:
         )
 
     def _confidence(self, n, ranked, features, aux, top_idx) -> str:
-        """신뢰도 high/low 판정 — build-prompt §8."""
+        """점수는 내되, 근거가 약한 추천은 낮은 신뢰도로 드러낸다."""
         if n < self.min_syllables:
             return "low"
         top_score = ranked[0][1]
@@ -156,7 +163,7 @@ class ScoringModel:
             return "low"
         if (top_score - second_score) / top_score < self.score_gap_ratio:
             return "low"
-        # 키워드 의존: 1위의 음운 점수보다 보조 보너스가 더 크면 키워드가 결과를 좌우한 것
+        # 보조 신호가 음운 점수보다 크면 "소리 인상"보다 관습 보정이 결과를 좌우한 것이다.
         top_category = CATEGORIES[top_idx]
         aux_top = aux.get(top_category, 0)
         phonetic_top = float(self.weights[top_idx] @ features + self.bias[top_idx])

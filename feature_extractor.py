@@ -2,13 +2,15 @@
 
 인덱스 순서는 :data:`FEATURE_NAMES`로 고정되며 `category_weights.json`의
 `_meta.feature_order`와 1:1로 일치해야 한다. 모든 값은 [0, 1]로 정규화한다.
+
+이 단계는 단어 뜻을 판단하지 않고, 입력의 소리 인상과 표기 리듬만 숫자로 낮춘다.
 """
 
 import numpy as np
 
 from text_preprocessor import PreprocessResult, preprocess
 
-# 인덱스 0~13 고정. category_weights.json의 feature_order와 동일해야 한다.
+# 문서·가중치 JSON·설명 문장이 같은 축을 바라보도록 특징 순서를 고정한다.
 FEATURE_NAMES = [
     "bright_vowel_ratio",        # 0
     "dark_vowel_ratio",          # 1
@@ -27,12 +29,12 @@ FEATURE_NAMES = [
 ]
 FEATURE_DIM = len(FEATURE_NAMES)
 
-# 모음 분류(중성 21개 전체) — design.md §6
+# 문헌의 음운 상징 논의를 구현 가능한 밝음/어두움/중립 축으로 단순화한다.
 BRIGHT_VOWELS = set("ㅏㅐㅑㅒㅗㅘㅙㅚㅛ")
 DARK_VOWELS = set("ㅓㅔㅕㅖㅜㅝㅞㅟㅠ")
 NEUTRAL_VOWELS = set("ㅡㅢㅣ")
 
-# 자음 분류(초성 기준) — design.md §6. 초성 ㅇ은 소리값이 없어 세지 않는다.
+# 자음도 의미가 아니라 발음 인상으로만 본다. 초성 ㅇ은 소리값이 없어 세지 않는다.
 TENSE_CONSONANTS = set("ㄲㄸㅃㅆㅉ")
 ASPIRATED_CONSONANTS = set("ㅋㅌㅍㅊ")
 NASAL_LIQUID_CONSONANTS = set("ㄴㅁㄹ")
@@ -80,11 +82,12 @@ def _char_repetition(text: str) -> float:
 
 
 def extract_features(result: PreprocessResult) -> np.ndarray:
-    """전처리 결과에서 14차원 특징 벡터를 만든다."""
+    """전처리된 재료를 점수 모델이 읽을 수 있는 고정 길이 벡터로 바꾼다."""
     n = result.n
     vec = np.zeros(FEATURE_DIM, dtype=float)
 
     if n > 0:
+        # 완성형 음절이 있을 때만 음운 비율을 채워, ㅋㅋ/ㅠㅠ가 가짜 모음 점수를 만들지 않게 한다.
         cho = [s.cho for s in result.syllables]
         jung = [s.jung for s in result.syllables]
         jong = [s.jong for s in result.syllables]
@@ -99,6 +102,7 @@ def extract_features(result: PreprocessResult) -> np.ndarray:
         vec[7] = sum(j == "ㅇ" for j in jong) / n
         vec[8] = sum(j in S_FINALS for j in jong) / n
 
+    # 반복과 문장부호는 감정 자체가 아니라 강도·리듬·머뭇거림의 흔적으로만 쓴다.
     vec[9] = _syllable_repetition(result.syllable_chars)
     vec[10] = _char_repetition(result.repetition_chars)
     vec[11] = min(result.exclaim_count, 3) / 3
