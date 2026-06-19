@@ -25,5 +25,4 @@ htmlcov/
 *.swp
 
 # 내부 산출물(공개 저장소에서 제외, 로컬 보관용)
-docs/build-prompt.md
 docs/git-conventions.md
