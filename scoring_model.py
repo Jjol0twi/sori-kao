@@ -68,7 +68,7 @@ class ScoringModel:
 
         self.weights = np.array(
             [config["categories"][c]["weights"] for c in CATEGORIES], dtype=float
-        )  # (10, 14)
+        )  # (9, 14)
         self.bias = np.array(
             [config["categories"][c]["bias"] for c in CATEGORIES], dtype=float
         )
