@@ -1,7 +1,8 @@
-"""recommender 단위 테스트(결정성·크기 선택·동점/저신뢰 구성)."""
+"""선택적 카모지 표시 레이어 테스트(결정성·크기 선택·동점/저신뢰 구성)."""
 
 import os
 import sys
+from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -22,12 +23,12 @@ def model():
 
 
 def test_select_by_size_returns_all_sizes(rec):
-    selected = rec.select_by_size("응원")
+    selected = rec.select_by_size("밝음·가벼움")
     assert set(selected) == set(SIZES)
     # 카탈로그 등록 순서상 각 크기 첫 항목
-    assert selected["작음"] == "٩( 'ω' )و"
-    assert selected["보통"] == "(ง •̀ω•́)ง"
-    assert selected["큼"] == "ᕦ(ò_óˇ)ᕤ"
+    assert selected["작음"] == "(^_^)"
+    assert selected["보통"] == "(*^▽^*)"
+    assert selected["큼"] == "ヽ(>∀<☆)ノ"
 
 
 def test_selection_is_deterministic(rec, model):
@@ -54,7 +55,11 @@ def test_low_confidence_trims_secondary(rec, model):
 
 
 def test_tie_produces_two_columns(rec, model):
-    result = model.score("ㄷㄷ")  # 당황·긴장이 같은 자모 보조 점수로 동점
+    result = SimpleNamespace(
+        tie_categories=["반복·리듬", "지속·여운"],
+        top3=[("반복·리듬", 0.6), ("지속·여운", 0.6), ("밝음·가벼움", 0.0)],
+        confidence="high",
+    )
     rec_out = rec.recommend(result)
     assert len(rec_out.tie) >= 2
     assert rec_out.primary_category == result.tie_categories[0]

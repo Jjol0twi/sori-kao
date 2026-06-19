@@ -1,8 +1,7 @@
 """설계서 §14 기반 회귀 테스트.
 
-성공 기준(design.md §14): 기대 카테고리 중 하나라도 Top-3에 들면 성공.
-음운-감정 매핑은 경향이라 100%를 요구하지 않고 "대체로"(>=70%) 충족을 본다.
-development-goal §14 요구에 맞춰 카테고리당 2개 이상, 총 20개 이상으로 확장하고,
+성공 기준(design.md §14): 기대 음운 인상 축 중 하나라도 Top-3에 들면 성공.
+음운 상징 매핑은 경향이라 100%를 요구하지 않고 "대체로"(>=70%) 충족을 본다.
 일부는 가중치 조정에 쓰지 않은 hold-out으로 분리한다.
 """
 
@@ -15,32 +14,32 @@ import pytest
 
 from scoring_model import CATEGORIES, ScoringModel
 
-# design.md §14 초안 10개 — 가중치 조정에 참고한 사례
+# 가중치 조정에 참고한 사례
 TUNING_CASES = [
-    ("아싸아싸!!", {"응원", "기쁨", "장난"}),
-    ("ㅋㅋㅋㅋ 뭐야", {"장난", "기쁨", "당황"}),
-    ("으으... 힘들다", {"피곤", "긴장"}),
-    ("고마워요ㅎㅎ", {"감사", "기쁨"}),
-    ("죄송합니다...", {"사과", "긴장"}),
-    ("빡세다 진짜!", {"분노", "집중", "긴장"}),
-    ("빠샤 집중하자", {"응원", "집중"}),
-    ("헉 뭐야??", {"당황", "긴장"}),
-    ("아... 망했다", {"긴장", "피곤", "당황"}),
-    ("우와!!!", {"기쁨", "당황"}),
+    ("아싸아싸!!", {"밝음·가벼움", "반복·리듬", "강함·격렬함"}),
+    ("아기", {"밝음·가벼움", "작음·섬세함"}),
+    ("야야", {"밝음·가벼움", "작음·섬세함", "반복·리듬"}),
+    ("으으...", {"어두움·무거움", "지속·여운", "반복·리듬"}),
+    ("빠샤!", {"강함·격렬함", "밝음·가벼움"}),
+    ("구르구르", {"반복·리듬", "부드러움·흐름"}),
+    ("앗!", {"막힘·단절감", "밝음·가벼움", "강함·격렬함"}),
+    ("쿵쿵", {"큼·둔중함", "어두움·무거움", "반복·리듬", "막힘·단절감"}),
+    ("ㅠㅠㅠ", {"지속·여운", "반복·리듬"}),
+    ("사각사각", {"밝음·가벼움", "반복·리듬", "막힘·단절감"}),
 ]
 
 # hold-out — 가중치 조정에 사용하지 않은 사례(자기충족 평가 방지, design §14)
 HOLDOUT_CASES = [
-    ("으악 짜증나", {"분노", "긴장"}),
-    ("미안해 정말", {"사과", "긴장"}),
-    ("고맙습니다", {"감사"}),
-    ("파이팅!!", {"응원", "기쁨"}),
-    ("하하하 웃겨", {"기쁨", "장난"}),
-    ("집중하자", {"집중"}),
-    ("꺄악 깜짝이야", {"당황", "긴장", "분노"}),
-    ("빡치네 진짜", {"분노", "집중"}),
-    ("졸려 죽겠다", {"피곤"}),
-    ("두근두근거려", {"긴장", "피곤"}),
+    ("하암", {"밝음·가벼움"}),
+    ("추카", {"강함·격렬함", "밝음·가벼움"}),
+    ("축하", {"강함·격렬함", "막힘·단절감", "어두움·무거움"}),
+    ("우우...", {"어두움·무거움", "지속·여운", "반복·리듬"}),
+    ("똑딱똑딱", {"강함·격렬함", "막힘·단절감", "반복·리듬"}),
+    ("나른나른", {"부드러움·흐름", "반복·리듬"}),
+    ("물렁물렁", {"부드러움·흐름", "반복·리듬", "큼·둔중함"}),
+    ("살랑살랑", {"밝음·가벼움", "부드러움·흐름", "반복·리듬", "지속·여운"}),
+    ("까칠까칠", {"강함·격렬함", "반복·리듬", "막힘·단절감"}),
+    ("둥둥", {"큼·둔중함", "어두움·무거움", "반복·리듬", "지속·여운"}),
 ]
 
 DESIGN_CASES = TUNING_CASES + HOLDOUT_CASES
@@ -61,7 +60,6 @@ def _hit_rate(model, cases):
 
 
 def test_case_count_and_per_category_coverage():
-    # development-goal §14: 총 20개 이상, 카테고리당 최소 2개
     assert len(DESIGN_CASES) >= 20
     for category in CATEGORIES:
         count = sum(category in expected for _, expected in DESIGN_CASES)
@@ -80,21 +78,22 @@ def test_holdout_hit_rate(model):
 
 
 def test_strong_cases_always_hold(model):
-    assert "응원" in _top3(model, "아싸아싸!!")
-    assert model.score("고마워요ㅎㅎ").top_category == "감사"
-    assert model.score("고맙습니다").top_category == "감사"
-    assert model.score("ㅋㅋㅋ").top_category == "장난"
-    assert model.score("ㅋㅋㅋㅋ 뭐야").top_category in {"장난", "기쁨"}
-    assert _top3(model, "빡세다 진짜!") & {"분노", "집중", "긴장"}
+    assert "반복·리듬" in _top3(model, "아싸아싸!!")
+    assert model.score("ㅋㅋㅋ").top_category == "반복·리듬"
+    assert {"반복·리듬", "지속·여운"}.issubset(_top3(model, "ㅠㅠㅠ"))
+    assert model.score("하암").top_category == "밝음·가벼움"
+    assert "강함·격렬함" in _top3(model, "빠샤!")
 
 
-def test_apology_keywords_stay_visible(model):
-    # 밝은 모음·말줄임표가 있어도 명시적 사과 신호가 Top-3에서 사라지면 안 된다.
-    assert "사과" in _top3(model, "죄송")
-    assert model.score("죄송합니다...").top_category == "사과"
-    assert model.score("미안해 정말").top_category == "사과"
+def test_no_emotion_keyword_shortcut(model):
+    # 의미 단어가 감정 카테고리로 우회하지 않고, 새 음운 인상 축만 반환된다.
+    for text in ["고마워요", "미안해 정말", "화나", "힘들다"]:
+        assert _top3(model, text) <= set(CATEGORIES)
+        assert not model.score(text).auxiliary
+    assert model.score("고마워요ㅎㅎ").auxiliary == {"반복·리듬": 0.5}
 
 
 def test_low_confidence_for_ambiguous(model):
     assert model.score("아").confidence == "low"
     assert model.score("음").confidence == "low"
+    assert model.score("하암").confidence == "low"

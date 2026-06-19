@@ -1,14 +1,13 @@
-"""tkinter GUI와 전체 추천 흐름.
+"""tkinter GUI와 전체 음운 인상 해석 흐름.
 
-초기에는 입력창 + 추천(Enter) + 초기화 버튼만 있는 작은 창이 뜬다.
-입력이 확정되면 창이 아래로 확장되며 1위 카테고리의 카모지(작음/보통/큼)와
-추천 이유·보조 후보를 보여준다. 1위가 동점이면 결과를 세로 두 열로 나눠
-각 감정의 카모지를 나란히 보여준다.
+초기에는 입력창 + 해석(Enter) + 초기화 버튼만 있는 작은 창이 뜬다.
+입력이 확정되면 창이 아래로 확장되며 1위 음운 인상과 해석 이유·보조 후보를
+보여준다. 카모지는 핵심 결과가 아니라 인상 축 아래의 선택적 표시물이다.
 
 색·폰트는 theme.py의 디자인 시스템 토큰을 따르며, 시스템 라이트/다크
 모드에 자동으로 반응한다(설정 없이 실시간 재적용).
 
-GUI에는 모델 규칙을 넣지 않고, 보고서 흐름처럼 분석 → 추천 → 설명 순서만
+GUI에는 모델 규칙을 넣지 않고, 보고서 흐름처럼 분석 → 표시 → 설명 순서만
 사용자가 눈으로 확인하게 한다.
 """
 
@@ -33,7 +32,7 @@ class Analysis:
 
 
 def analyze(text: str, model: ScoringModel, recommender: KaomojiRecommender):
-    """보고서의 처리 순서와 같은 모양으로 점수·추천·설명을 묶는다."""
+    """보고서의 처리 순서와 같은 모양으로 점수·표시·설명을 묶는다."""
     if not text.strip():
         return None
     score = model.score(text)
@@ -119,7 +118,7 @@ class KaomojiApp:
         self.theme = Theme(detect_mode())
         self._last = None  # None | _EMPTY | Analysis
 
-        root.title("sori-kao — 음운 카모지 추천")
+        root.title("sori-kao — 음운 인상 해석")
         root.geometry("480x150")  # 시작은 작은 창(이후 내용에 맞춰 재조정)
 
         self._build()
@@ -136,7 +135,7 @@ class KaomojiApp:
         self.input_frame.pack(fill="x")
 
         self.hint = tk.Label(
-            self.input_frame, text="한국어 단어나 문장을 입력하세요",
+            self.input_frame, text="한국어 짧은 표현을 입력하세요",
             font=self.theme.font("hint"), anchor="w",
         )
         self.hint.pack(anchor="w")
@@ -151,7 +150,7 @@ class KaomojiApp:
         self.entry.bind("<Return>", lambda _e: self.on_submit())
         bind_text_edit_shortcuts(self.entry)
         self.entry.focus_set()
-        tk.Button(self.entry_row, text="추천", command=self.on_submit).pack(
+        tk.Button(self.entry_row, text="해석", command=self.on_submit).pack(
             side="left", padx=(8, 0)
         )
         tk.Button(self.entry_row, text="초기화", command=self.on_reset).pack(
@@ -179,7 +178,7 @@ class KaomojiApp:
             insertbackground=t.c("entry_fg"),
             highlightbackground=t.c("border"), highlightcolor=t.c("accent"),
         )
-        self._rerender()  # 테마 변경은 추천 재계산이 아니라 같은 결과의 재표현이다.
+        self._rerender()  # 테마 변경은 해석 재계산이 아니라 같은 결과의 재표현이다.
         # tk.Button은 macOS에서 네이티브 외관이라 시스템 테마를 자동 반영한다.
 
     def _watch_theme(self):
@@ -233,7 +232,7 @@ class KaomojiApp:
         t = self.theme
         if self._last is _EMPTY:
             tk.Label(
-                self.result_frame, text="한국어 단어나 문장을 입력해주세요.",
+                self.result_frame, text="한국어 짧은 표현을 입력해주세요.",
                 bg=t.c("bg"), fg=t.c("danger"), font=t.font("empty"),
             ).pack(anchor="w")
             return
@@ -247,7 +246,7 @@ class KaomojiApp:
         if len(tie) >= 2:
             # 동점은 억지로 하나를 고르지 않고, 규칙 기반 모델의 모호함을 그대로 보여준다.
             tk.Label(
-                self.result_frame, text="점수가 동점이라 두 카테고리를 함께 보여줍니다",
+                self.result_frame, text="점수가 동점이라 두 인상 축을 함께 보여줍니다",
                 bg=t.c("bg"), fg=t.c("muted"), font=t.font("hint"),
             ).pack(anchor="w", pady=(0, 6))
             columns = tk.Frame(self.result_frame, bg=t.c("bg"))
@@ -268,7 +267,7 @@ class KaomojiApp:
         if rec.secondary_categories:
             tk.Label(
                 self.result_frame,
-                text="보조 후보: " + ", ".join(rec.secondary_categories),
+                text="다른 해석 후보: " + ", ".join(rec.secondary_categories),
                 bg=t.c("bg"), fg=t.c("muted"), font=t.font("secondary"),
             ).pack(anchor="w", pady=(8, 0))
 
@@ -298,7 +297,7 @@ class KaomojiApp:
         box = tk.Frame(self.result_frame, bg=t.c("bg"))
         box.pack(fill="x", pady=(10, 0))
         tk.Label(
-            box, text="추천 이유", bg=t.c("bg"), fg=t.c("text"),
+            box, text="해석 이유", bg=t.c("bg"), fg=t.c("text"),
             font=t.font("section"),
         ).pack(anchor="w")
         for reason in explanation.reasons:
@@ -314,7 +313,7 @@ class KaomojiApp:
             ).pack(anchor="w", pady=(4, 0))
 
     def _copy(self, text: str):
-        # 추천 결과를 바로 붙여 넣어 볼 수 있게 하는 UI 편의 기능이며 점수에는 관여하지 않는다.
+        # 표시 결과를 바로 붙여 넣어 볼 수 있게 하는 UI 편의 기능이며 점수에는 관여하지 않는다.
         self.root.clipboard_clear()
         self.root.clipboard_append(text)
         self.toast.config(text=f"복사됨: {text}")

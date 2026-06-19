@@ -1,4 +1,4 @@
-"""explanation 단위 테스트(이유 2개 보장·보조 신호·저신뢰 완화)."""
+"""explanation 단위 테스트(이유 2개 보장·표기 보조 신호·저신뢰 완화)."""
 
 import os
 import sys
@@ -17,31 +17,33 @@ def model():
 
 
 def test_at_least_two_reasons(model):
-    # 완료 기준: 추천 이유 2개 이상(신호가 적은 입력 포함)
-    for text in ["아싸아싸!!", "아", "으으... 힘들다", "음", ""]:
+    # 완료 기준: 해석 이유 2개 이상(신호가 적은 입력 포함)
+    for text in ["아싸아싸!!", "아", "으으...", "음", ""]:
         explanation = build_explanation(model.score(text))
         assert len(explanation.reasons) >= 2, text
 
 
-def test_auxiliary_signal_is_marked(model):
-    # 키워드 보조가 1위에 기여하면 '보조 신호' 문장이 포함된다
-    explanation = build_explanation(model.score("고마워요ㅎㅎ"))
-    assert any("보조 신호" in r for r in explanation.reasons)
+def test_jamo_auxiliary_signal_is_marked(model):
+    # 자모 반복이 1위에 기여하면 표기 보조 신호 문장이 포함된다.
+    explanation = build_explanation(model.score("ㅋㅋㅋ"))
+    assert explanation.category == "반복·리듬"
+    assert any("표기 보조 신호" in r for r in explanation.reasons)
 
 
-def test_semantic_hint_signal_is_marked_separately(model):
-    # 하품 같은 관습 표현은 키워드·자모가 아니라 의미 힌트 보조 신호로 설명한다
+def test_no_semantic_hint_explanation_for_yawn_like_text(model):
+    # 하암은 하품 의미로 보내지 않고, 짧은 밝은 모음 인상으로 낮은 신뢰도 처리한다.
     explanation = build_explanation(model.score("하암"))
-    assert any("관습 표현" in r for r in explanation.reasons)
-    assert any("구분하기 어려워" in r for r in explanation.reasons)
-    assert all("키워드·자모" not in r for r in explanation.reasons)
+    assert explanation.category == "밝음·가벼움"
+    assert explanation.confidence == "low"
+    assert all("관습 표현" not in r for r in explanation.reasons)
+    assert all("키워드" not in r for r in explanation.reasons)
 
 
 def test_rhythmic_ideophone_explanation_does_not_use_fallback(model):
     explanation = build_explanation(model.score("구르구르"))
-    assert explanation.category == "장난"
+    assert explanation.category == "반복·리듬"
     assert any("리듬" in r for r in explanation.reasons)
-    assert all("기본 후보" not in r for r in explanation.reasons)
+    assert all("기본 해석 후보" not in r for r in explanation.reasons)
 
 
 def test_low_confidence_note(model):
@@ -52,7 +54,7 @@ def test_low_confidence_note(model):
 
 
 def test_high_confidence_has_no_note(model):
-    explanation = build_explanation(model.score("빠샤 집중하자"))
+    explanation = build_explanation(model.score("구르구르"))
     assert explanation.confidence == "high"
     assert explanation.note == ""
 
@@ -60,5 +62,5 @@ def test_high_confidence_has_no_note(model):
 def test_reasons_come_from_real_contributions(model):
     # 실제 점수에 기여한 특징만 이유로 쓰인다(빈 입력은 fallback 문장)
     explanation = build_explanation(model.score("아싸아싸!!"))
-    assert explanation.category == "응원"
+    assert explanation.category == "반복·리듬"
     assert all(isinstance(r, str) and r for r in explanation.reasons)

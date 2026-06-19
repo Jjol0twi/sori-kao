@@ -2,7 +2,6 @@
 
 import json
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,33 +30,13 @@ def test_category_weights_match_feature_contract():
         assert isinstance(item["bias"], (int, float))
 
 
-def test_auxiliary_keywords_reference_known_categories_and_cap():
+def test_emotion_keyword_layers_are_not_part_of_scoring_data():
     config = _load_json("data/category_weights.json")
-    cap = config["_meta"]["auxiliary_bonus_cap"]
-
-    for keyword, item in config["auxiliary_keywords"].items():
-        assert keyword
-        assert item["category"] in CATEGORIES
-        assert 0 < item["bonus"] <= cap
-
-
-def test_semantic_hints_reference_known_categories_and_cap():
-    config = _load_json("data/category_weights.json")
-    cap = config["_meta"]["semantic_bonus_cap"]
-
-    assert "auxiliary_patterns" not in config
-    assert config["semantic_hints"]
-
-    for tag, item in config["semantic_hints"].items():
-        assert tag
-        assert item["patterns"]
-        for pattern in item["patterns"]:
-            assert pattern
-            re.compile(pattern)
-        assert item["category_bonus"]
-        for category, bonus in item["category_bonus"].items():
-            assert category in CATEGORIES
-            assert 0 < bonus <= cap
+    assert "auxiliary_keywords" not in config
+    assert "semantic_hints" not in config
+    assert "semantic_bonus_cap" not in config["_meta"]
+    assert config["_meta"]["mvp_scored_categories"] == len(CATEGORIES)
+    assert "변화·교체감" not in config["categories"]
 
 
 def test_kaomoji_catalog_has_required_sizes():

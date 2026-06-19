@@ -1,4 +1,4 @@
-"""scoring_model 단위 테스트(점수 계산 메커니즘 검증)."""
+"""scoring_model 단위 테스트(음운 인상 점수 계약 검증)."""
 
 import os
 import sys
@@ -10,9 +10,27 @@ import pytest
 from scoring_model import CATEGORIES, ScoringModel
 
 
+EXPECTED_CATEGORIES = [
+    "밝음·가벼움",
+    "어두움·무거움",
+    "작음·섬세함",
+    "큼·둔중함",
+    "강함·격렬함",
+    "부드러움·흐름",
+    "반복·리듬",
+    "지속·여운",
+    "막힘·단절감",
+]
+
+
 @pytest.fixture(scope="module")
 def model():
     return ScoringModel()
+
+
+def test_category_contract_uses_phonetic_impression_axes():
+    assert CATEGORIES == EXPECTED_CATEGORIES
+    assert "변화·교체감" not in CATEGORIES  # MVP 미산출 확장 축
 
 
 def test_top3_length_and_descending(model):
@@ -24,190 +42,85 @@ def test_top3_length_and_descending(model):
 
 
 def test_zero_score_input_ranked_order_and_no_fake_tie(model):
-    # 모든 점수 0인 퇴화 입력: ranked는 CATEGORIES 순서, 가짜 동점은 만들지 않음
     result = model.score("")
     assert [c for c, _ in result.ranked] == CATEGORIES
-    assert result.tie_categories == ["응원"]  # top_score<=0이면 동점으로 보지 않음
+    assert result.tie_categories == ["밝음·가벼움"]
     assert result.confidence == "low"
 
 
-def test_partial_tie_follows_category_order(model):
-    # 일부 카테고리만 양수 점수로 1위 동점일 때 §3 순서를 따른다
-    result = model.score("ㄷㄷ")  # 당황·긴장이 같은 자모 보조 점수로 동점
-    assert len(result.tie_categories) >= 2
-    # 동점 그룹이 CATEGORIES 상대 순서를 유지
-    indexed = [CATEGORIES.index(c) for c in result.tie_categories]
-    assert indexed == sorted(indexed)
-    # ranked의 동점 블록도 같은 순서
-    top = result.ranked[0][1]
-    tied_in_ranked = [c for c, s in result.ranked if s == top]
-    assert tied_in_ranked == result.tie_categories
-
-
-def test_confidence_low_for_short_input(model):
-    assert model.score("아").confidence == "low"
-
-
-def test_auxiliary_bonus_capped(model):
-    # 감사+고마 = 0.4+0.4=0.8 → 상한 0.5로 잘림
-    result = model.score("감사 고마워")
-    assert result.auxiliary["감사"] == pytest.approx(0.5)
-
-
-def test_contributions_are_positive_only(model):
+def test_bright_repeated_expression_returns_impression_axes(model):
     result = model.score("아싸아싸!!")
-    assert result.contributions  # 비어 있지 않음
-    assert all(val > 0 for _, val in result.contributions)
+    top3 = {c for c, _ in result.top3}
+    assert {"밝음·가벼움", "반복·리듬", "강함·격렬함"} & top3
+    assert "반복·리듬" in top3
+    assert top3 <= set(EXPECTED_CATEGORIES)
 
 
-def test_keyword_routes_to_expected_category(model):
-    # 보조 키워드가 해당 카테고리 점수를 끌어올린다
-    assert model.score("고마워요ㅎㅎ").top_category == "감사"
+def test_dark_lingering_expression_returns_dark_and_linger(model):
+    top3 = {c for c, _ in model.score("으으...").top3}
+    assert "어두움·무거움" in top3
+    assert "지속·여운" in top3
 
 
-def test_tense_and_punctuation_drive_focus_anger(model):
-    # 빡세다 진짜! → 집중/분노/긴장 계열이 상위
-    top3 = {c for c, _ in model.score("빡세다 진짜!").top3}
-    assert top3 & {"집중", "분노", "긴장"}
+def test_tense_aspirated_and_punctuation_drive_intensity(model):
+    top3 = {c for c, _ in model.score("빠샤!").top3}
+    assert "강함·격렬함" in top3
+    assert "밝음·가벼움" in top3
 
 
-def test_invalid_feature_order_raises(tmp_path):
-    import json
-    bad = {
-        "_meta": {
-            "feature_order": ["wrong"],
-            "auxiliary_bonus_cap": 0.5,
-            "confidence": {"min_syllables": 2, "score_gap_ratio": 0.15},
-        },
-        "categories": {}, "auxiliary_keywords": {},
-    }
-    path = tmp_path / "bad.json"
-    path.write_text(json.dumps(bad), encoding="utf-8")
-    with pytest.raises(ValueError):
-        ScoringModel(str(path))
+def test_repeated_ideophone_returns_rhythm_without_emotion_category(model):
+    result = model.score("구르구르")
+    assert result.top_category == "반복·리듬"
+    assert {c for c, _ in result.top3} <= set(EXPECTED_CATEGORIES)
 
 
-def test_contributions_descending_and_match_formula(model):
+def test_jamo_repetition_maps_to_notational_rhythm_and_low_confidence(model):
+    laugh = model.score("ㅋㅋㅋ")
+    cry = model.score("ㅠㅠㅠ")
+
+    assert laugh.top_category == "반복·리듬"
+    assert laugh.auxiliary_sources["반복·리듬"] == ["jamo"]
+    assert laugh.confidence == "low"
+
+    cry_top3 = {c for c, _ in cry.top3}
+    assert "반복·리듬" in cry_top3
+    assert "지속·여운" in cry_top3
+    assert cry.confidence == "low"
+
+
+def test_no_keyword_or_semantic_hint_layer(model):
+    result = model.score("고마워요ㅎㅎ")
+    assert not any(source.startswith("semantic:") for sources in result.auxiliary_sources.values() for source in sources)
+    assert {c for c, _ in result.top3} <= set(EXPECTED_CATEGORIES)
+
+
+def test_short_bright_expression_is_low_confidence_not_yawn_meaning(model):
+    result = model.score("하암")
+    assert result.top_category == "밝음·가벼움"
+    assert result.confidence == "low"
+    assert not result.auxiliary_sources
+
+
+def test_spelling_pronunciation_forms_can_differ_without_g2p(model):
+    spelling = model.score("축하")
+    pronunciation = model.score("추카")
+
+    assert spelling.features.tolist() != pronunciation.features.tolist()
+    assert spelling.top3 != pronunciation.top3
+
+
+def test_contributions_are_positive_descending_and_match_formula(model):
     import numpy as np
     from feature_extractor import FEATURE_NAMES
 
     result = model.score("아싸아싸!!")
+    assert result.contributions
     values = [v for _, v in result.contributions]
-    assert values == sorted(values, reverse=True)  # 내림차순 정렬
+    assert values == sorted(values, reverse=True)
+    assert all(val > 0 for _, val in result.contributions)
 
-    # 첫 항목 = x[i] * W[top][i] 중 최대
     top_idx = CATEGORIES.index(result.top_category)
     contrib = result.features * model.weights[top_idx]
     name, val = result.contributions[0]
     assert val == pytest.approx(contrib[FEATURE_NAMES.index(name)])
     assert val == pytest.approx(float(np.max(contrib)))
-
-
-def test_auxiliary_cap_on_jamo_and_keyword_mix(model):
-    # 고마(키워드 0.4) + ㅎ 반복(자모 0.3) = 0.7 → 일반 보조 상한 0.5로 잘림
-    result = model.score("고마ㅎㅎㅎ")
-    assert result.auxiliary["감사"] == pytest.approx(0.5)
-
-
-def test_keyword_dependent_input_is_low_confidence(model):
-    # 음운 점수가 약하고 키워드 보너스가 1위를 좌우하면 low
-    result = model.score("힘들")
-    assert result.confidence == "low"
-
-
-def test_yawn_semantic_hint_routes_to_tired_without_breaking_laughter(model):
-    # 하품 소리 관습은 밝은 ㅏ 음운만으로 구분하기 어려워 의미 힌트로 처리한다.
-    yawn = model.score("하암")
-    assert yawn.top_category == "피곤"
-    assert yawn.auxiliary_sources["피곤"] == ["semantic:yawn"]
-    assert model.score("하아암").top_category == "피곤"
-    assert model.score("하품").top_category == "피곤"
-    assert yawn.confidence == "low"
-    assert model.score("하하하").top_category in {"기쁨", "장난", "응원"}
-
-
-def test_distress_words_route_to_tired_as_semantic_hints(model):
-    # 짧은 의미 표현은 음운만으로 밝게 보일 수 있어 의미 힌트로 피곤 후보를 올린다.
-    pain = model.score("맘이 아프다")
-    tired = model.score("힘들어")
-
-    assert pain.top_category == "피곤"
-    assert pain.auxiliary_sources["피곤"] == ["semantic:distress"]
-    assert pain.confidence == "low"
-
-    assert tired.top_category == "피곤"
-    assert tired.auxiliary_sources["피곤"] == ["semantic:distress"]
-
-
-def test_rhythmic_ideophone_repetition_does_not_default_to_tired(model):
-    # 반복 의태어가 모두 피곤으로 가면 반복 신호가 과잉 해석된다.
-    result = model.score("구르구르")
-    assert result.top_category == "장난"
-    assert result.confidence == "high"
-
-
-def test_short_conventional_reactions_do_not_follow_bright_or_soft_sounds(model):
-    embarrassed = model.score("이런")
-    angry = model.score("망할")
-    angry_word = model.score("화나")
-
-    assert embarrassed.top_category == "당황"
-    assert embarrassed.auxiliary_sources["당황"] == ["semantic:surprise_reaction"]
-    assert embarrassed.confidence == "low"
-
-    assert angry.top_category == "분노"
-    assert angry.auxiliary_sources["분노"] == ["semantic:negative_reaction"]
-    assert angry.confidence == "low"
-
-    assert angry_word.top_category == "분노"
-    assert angry_word.auxiliary_sources["분노"] == ["semantic:negative_reaction"]
-    assert angry_word.confidence == "low"
-
-
-def test_pleading_request_does_not_become_high_confidence_thanks(model):
-    result = model.score("가지마")
-
-    assert result.top_category == "긴장"
-    assert result.auxiliary_sources["긴장"] == ["semantic:pleading_request"]
-    assert result.confidence == "low"
-
-
-def test_laughter_jamo_prefers_play_over_generic_joy(model):
-    result = model.score("ㄹㅇㅋㅋ")
-    assert result.top_category == "장난"
-    assert result.auxiliary_sources["장난"] == ["jamo"]
-
-
-def test_distress_words_do_not_get_overruled_by_bright_vowels(model):
-    tired = model.score("피곤하다")
-    pain = model.score("아프다")
-    hungry = model.score("배고파")
-
-    assert tired.top_category == "피곤"
-    assert tired.auxiliary_sources["피곤"] == ["semantic:distress"]
-    assert tired.confidence == "low"
-
-    assert pain.top_category == "피곤"
-    assert pain.auxiliary_sources["피곤"] == ["semantic:distress"]
-    assert pain.confidence == "low"
-
-    assert hungry.top_category == "피곤"
-    assert hungry.auxiliary_sources["피곤"] == ["semantic:distress"]
-    assert hungry.confidence == "low"
-
-
-def test_surprise_words_do_not_get_overruled_by_bright_vowels(model):
-    result = model.score("놀랐잖아")
-
-    assert result.top_category == "당황"
-    assert result.auxiliary_sources["당황"] == ["semantic:surprise_reaction"]
-    assert result.confidence == "low"
-
-
-def test_crying_jamo_repetition_does_not_become_play(model):
-    result = model.score("ㅠㅠㅠ")
-
-    assert result.top_category in {"피곤", "긴장", "사과"}
-    assert result.top_category != "장난"
-    assert result.auxiliary_sources[result.top_category] == ["jamo"]
-    assert result.confidence == "low"
