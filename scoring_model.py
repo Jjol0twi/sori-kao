@@ -74,7 +74,6 @@ class ScoringModel:
         )
         self.aux_cap = meta["auxiliary_bonus_cap"]
         self.min_syllables = meta["confidence"]["min_syllables"]
-        self.score_gap_ratio = meta["confidence"]["score_gap_ratio"]
 
     def _auxiliary_bonus(self, text: str, jamo: list) -> dict:
         """단독 자모 반복을 표기 보조 신호로만 제한해 보탠다."""
@@ -160,10 +159,7 @@ class ScoringModel:
         if strong_signal <= 0:
             return "low"
         top_score = ranked[0][1]
-        second_score = ranked[1][1]
         if top_score <= 0:  # 점수가 비양수면 비율 판정 불가 → 모호로 본다(0-나눗셈 가드)
-            return "low"
-        if (top_score - second_score) / top_score < self.score_gap_ratio:
             return "low"
         # 보조 신호가 음운 점수보다 크면 "소리 인상"보다 표기 보정이 결과를 좌우한 것이다.
         top_category = CATEGORIES[top_idx]

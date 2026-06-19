@@ -57,7 +57,7 @@ def test_bright_repeated_expression_returns_impression_axes(model):
 
 
 def test_dark_lingering_expression_returns_dark_and_linger(model):
-    top3 = {c for c, _ in model.score("으으...").top3}
+    top3 = {c for c, _ in model.score("우우...").top3}
     assert "어두움·무거움" in top3
     assert "지속·여운" in top3
 
@@ -99,6 +99,14 @@ def test_short_bright_expression_is_low_confidence_not_yawn_meaning(model):
     assert result.top_category == "밝음·가벼움"
     assert result.confidence == "low"
     assert not result.auxiliary_sources
+
+
+def test_close_top_scores_can_be_high_when_they_are_compound_impressions(model):
+    result = model.score("쿵쾅쿵쾅")
+    assert result.confidence == "high"
+    assert {"강함·격렬함", "반복·리듬", "막힘·단절감"}.issubset(
+        {category for category, _ in result.top3}
+    )
 
 
 def test_spelling_pronunciation_forms_can_differ_without_g2p(model):

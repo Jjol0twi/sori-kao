@@ -35,6 +35,7 @@ def test_emotion_keyword_layers_are_not_part_of_scoring_data():
     assert "auxiliary_keywords" not in config
     assert "semantic_hints" not in config
     assert "semantic_bonus_cap" not in config["_meta"]
+    assert "score_gap_ratio" not in config["_meta"]["confidence"]
     assert config["_meta"]["mvp_scored_categories"] == len(CATEGORIES)
     assert "변화·교체감" not in config["categories"]
 
