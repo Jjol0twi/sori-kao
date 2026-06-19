@@ -26,8 +26,8 @@ def test_select_by_size_returns_all_sizes(rec):
     selected = rec.select_by_size("밝음·가벼움")
     assert set(selected) == set(SIZES)
     # 카탈로그 등록 순서상 각 크기 첫 항목
-    assert selected["작음"] == "(^_^)"
-    assert selected["보통"] == "(*^▽^*)"
+    assert selected["작음"] == "(^▽^)"
+    assert selected["보통"] == "٩(◕‿◕)۶"
     assert selected["큼"] == "ヽ(>∀<☆)ノ"
 
 
