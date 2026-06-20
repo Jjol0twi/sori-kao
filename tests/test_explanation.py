@@ -47,10 +47,17 @@ def test_rhythmic_ideophone_explanation_does_not_use_fallback(model):
 
 
 def test_low_confidence_note(model):
-    explanation = build_explanation(model.score("아"))
-    assert explanation.confidence == "low"
-    assert explanation.note
-    assert "후보" in explanation.note
+    # 짧지만 음운 신호는 뚜렷한 입력 → 낮은 신뢰도 완화 문구(후보)
+    short = build_explanation(model.score("톡"))
+    assert short.confidence == "low"
+    assert "후보" in short.note
+
+
+def test_weak_signal_note_for_ordinary_word(model):
+    # 신호 자체가 약한 일반 표현 → '약한 경향/참고' 문구로 정직하게 표시
+    weak = build_explanation(model.score("사랑해"))
+    assert weak.confidence == "low"
+    assert "참고" in weak.note
 
 
 def test_high_confidence_has_no_note(model):

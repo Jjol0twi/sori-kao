@@ -30,6 +30,14 @@ def test_category_weights_match_feature_contract():
         assert isinstance(item["bias"], (int, float))
 
 
+def test_informativeness_matches_feature_contract():
+    config = _load_json("data/category_weights.json")
+    info = config["_meta"]["informativeness"]
+    assert len(info) == len(FEATURE_NAMES)
+    assert all(isinstance(x, (int, float)) and x > 0 for x in info)
+    assert config["_meta"]["confidence"]["weak_signal_threshold"] > 0
+
+
 def test_emotion_keyword_layers_are_not_part_of_scoring_data():
     config = _load_json("data/category_weights.json")
     assert "auxiliary_keywords" not in config

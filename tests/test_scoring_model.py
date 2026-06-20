@@ -129,8 +129,21 @@ def test_contributions_are_positive_descending_and_match_formula(model):
     assert values == sorted(values, reverse=True)
     assert all(val > 0 for _, val in result.contributions)
 
+    # 기여도는 점수와 같은 정보량(markedness) 가중 기준이다.
     top_idx = CATEGORIES.index(result.top_category)
-    contrib = result.features * model.weights[top_idx]
+    contrib = (result.features * model.informativeness) * model.weights[top_idx]
     name, val = result.contributions[0]
     assert val == pytest.approx(contrib[FEATURE_NAMES.index(name)])
     assert val == pytest.approx(float(np.max(contrib)))
+
+
+def test_markedness_weakens_ordinary_words_but_keeps_ideophones(model):
+    # 흔한 모음 위주의 일상어는 정보량(markedness)이 낮아 '약신호'로 표시된다(모음 과대 방지).
+    for word in ["사랑해", "증오한다", "행복해", "하지마세요"]:
+        result = model.score(word)
+        assert result.weak_signal is True, word
+        assert result.confidence == "low", word
+    # 유표 자질(된소리·첩어 등)이 뚜렷한 의성어는 약신호가 아니다.
+    for word in ["아싸아싸!!", "빠샤!", "똑딱똑딱", "사각사각"]:
+        result = model.score(word)
+        assert result.weak_signal is False, word

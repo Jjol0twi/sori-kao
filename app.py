@@ -291,9 +291,18 @@ class KaomojiApp:
         t = self.theme
         rec = analysis.recommendation
         tie = rec.tie
+        weak = analysis.score.weak_signal
+
+        # 약신호(유표 음운 신호 부족)는 결과 맨 위에 명시해, 약한 경향을 단정으로 오해하지 않게 한다.
+        if weak:
+            tk.Label(
+                self.result_frame, text="⚠ 뚜렷한 음운 인상 없음 — 약한 경향(참고용)",
+                bg=t.c("bg"), fg=t.c("note"), font=t.font("section"),
+                anchor="w", justify="left",
+            ).pack(anchor="w", pady=(0, 6))
 
         # 해석 이유가 핵심이므로, 부가 표시물인 카모지보다 위에 먼저 보여준다.
-        self._render_reasons(analysis.explanation)
+        self._render_reasons(analysis.explanation, weak=weak)
 
         if len(tie) >= 2:
             # 동점은 억지로 하나를 고르지 않고, 규칙 기반 모델의 모호함을 그대로 보여준다.
@@ -340,7 +349,7 @@ class KaomojiApp:
                 label.pack(anchor="w", pady=3, fill="x")
                 label.bind("<Button-1>", lambda _e, x=text: self._copy(x))
 
-    def _render_reasons(self, explanation: Explanation):
+    def _render_reasons(self, explanation: Explanation, weak: bool = False):
         t = self.theme
         box = tk.Frame(self.result_frame, bg=t.c("bg"))
         box.pack(fill="x", pady=(0, 10))
@@ -353,7 +362,8 @@ class KaomojiApp:
                 box, text="• " + reason, bg=t.c("bg"), fg=t.c("text"),
                 font=t.font("reason"), justify="left", wraplength=360,
             ).pack(anchor="w")
-        if explanation.note:
+        # 약신호는 위쪽 배너로 이미 알렸으므로 하단 ※는 생략(중복 방지).
+        if explanation.note and not weak:
             tk.Label(
                 box, text="※ " + explanation.note, bg=t.c("bg"),
                 fg=t.c("note"), font=t.font("small"),

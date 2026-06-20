@@ -52,6 +52,7 @@ class ScoreResult:
     top3: list                        # 상위 3개 (인상 축, score)
     top_category: str
     confidence: str                   # "high" | "low"
+    weak_signal: bool                 # 정보량(유표) 신호가 약함 → "뚜렷한 음운 인상 없음"
     contributions: list              # 1위 축의 (feature, 기여도) 내림차순(양수만)
     auxiliary: dict                   # 축별 적용된 표기 보조 보너스(상한 반영)
     auxiliary_sources: dict           # 축별 보조 신호 출처
@@ -75,11 +76,16 @@ class ScoringModel:
         self.bias = np.array(
             [config["categories"][c]["bias"] for c in CATEGORIES], dtype=float
         )
+        # 정보량(markedness) 가중: 자질을 한국어 출현빈도 역수로 눌러, 흔한 모음(ㅏ 등)의
+        # 과대 기여를 막고 드문 유표 자질(된소리·첩어 등)을 부각한다(빈도 근거 추정값).
+        info = meta.get("informativeness")
+        self.informativeness = (
+            np.array(info, dtype=float) if info else np.ones(len(FEATURE_NAMES))
+        )
         self.aux_cap = meta["auxiliary_bonus_cap"]
         self.min_syllables = meta["confidence"]["min_syllables"]
-        # 강한 음운 신호가 '있다/없다'를 넘어 단어 길이 대비 충분히 밀도 있어야 high로 본다.
-        # (4음절 일상어 속 된소리 하나 같은 옅은 신호로 과신하지 않게 한다.)
-        self.min_strong_signal = meta["confidence"].get("min_strong_signal", 0.0)
+        # 정보량 가중 점수의 top이 이 값 미만이고 자모 패턴도 없으면 '뚜렷한 음운 인상 없음'.
+        self.weak_threshold = meta["confidence"].get("weak_signal_threshold", 0.0)
 
     def _auxiliary_bonus(self, text: str, jamo: list) -> dict:
         """단독 자모 반복을 표기 보조 신호로만 제한해 보탠다."""
@@ -111,11 +117,12 @@ class ScoringModel:
         if result is None:
             result = preprocess(text)
         features = extract_features(result)
+        weighted = features * self.informativeness  # 정보량(markedness) 가중
 
         aux, aux_sources = self._auxiliary_bonus(text, result.jamo)
         aux_vec = np.array([aux[c] for c in CATEGORIES], dtype=float)
         # 최종 점수 합성은 이 한 줄에 모아 두어, 설명과 테스트가 같은 근거를 보게 한다.
-        scores = self.weights @ features + self.bias + aux_vec
+        scores = self.weights @ weighted + self.bias + aux_vec
 
         # 점수 내림차순, 동점은 CATEGORIES 순서로 타이브레이크한다.
         order = sorted(range(len(CATEGORIES)), key=lambda i: (-scores[i], i))
@@ -131,7 +138,8 @@ class ScoringModel:
             tie = [top_category]
 
         # 해석 이유는 실제 양수 기여도에서만 고른다. 없는 근거를 문장으로 꾸미지 않기 위해서다.
-        contrib = features * self.weights[top_idx]
+        # 점수와 같은 정보량 가중 기여를 쓴다(설명이 실제 점수 근거와 일치).
+        contrib = weighted * self.weights[top_idx]
         contributions = sorted(
             ((FEATURE_NAMES[i], float(contrib[i])) for i in range(len(FEATURE_NAMES))),
             key=lambda kv: kv[1],
@@ -139,7 +147,10 @@ class ScoringModel:
         )
         contributions = [(name, val) for name, val in contributions if val > 0]
 
-        confidence = self._confidence(result.n, ranked, features, aux, top_idx)
+        # 정보량 가중 top이 임계 미만이고 자모 패턴(보조 신호)도 없으면 약신호로 본다.
+        has_pattern = any(b > 0 for b in aux.values())
+        weak = bool(top_score < self.weak_threshold and not has_pattern)
+        confidence = self._confidence(result.n, ranked, weighted, aux, top_idx, weak)
 
         return ScoreResult(
             features=features,
@@ -147,6 +158,7 @@ class ScoringModel:
             top3=ranked[:3],
             top_category=top_category,
             confidence=confidence,
+            weak_signal=weak,
             contributions=contributions,
             auxiliary={c: b for c, b in aux.items() if b > 0},
             auxiliary_sources={c: aux_sources[c] for c, b in aux.items() if b > 0},
@@ -154,15 +166,11 @@ class ScoringModel:
             n=result.n,
         )
 
-    def _confidence(self, n, ranked, features, aux, top_idx) -> str:
+    def _confidence(self, n, ranked, weighted, aux, top_idx, weak) -> str:
         """점수는 내되, 근거가 약한 해석은 낮은 신뢰도로 드러낸다."""
         if n < self.min_syllables:
             return "low"
-        strong_signal = (
-            features[3] + features[4] + features[9] + features[10]
-            + features[11] + features[12] + features[13]
-        )
-        if strong_signal < self.min_strong_signal:
+        if weak:  # 정보량(유표) 신호가 임계 미만 → 뚜렷한 음운 인상 없음
             return "low"
         top_score = ranked[0][1]
         if top_score <= 0:  # 점수가 비양수면 비율 판정 불가 → 모호로 본다(0-나눗셈 가드)
@@ -170,7 +178,7 @@ class ScoringModel:
         # 보조 신호가 음운 점수보다 크면 "소리 인상"보다 표기 보정이 결과를 좌우한 것이다.
         top_category = CATEGORIES[top_idx]
         aux_top = aux.get(top_category, 0)
-        phonetic_top = float(self.weights[top_idx] @ features + self.bias[top_idx])
+        phonetic_top = float(self.weights[top_idx] @ weighted + self.bias[top_idx])
         if aux_top > 0 and phonetic_top < aux_top:
             return "low"
         return "high"
