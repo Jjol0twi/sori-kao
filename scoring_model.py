@@ -74,6 +74,9 @@ class ScoringModel:
         )
         self.aux_cap = meta["auxiliary_bonus_cap"]
         self.min_syllables = meta["confidence"]["min_syllables"]
+        # 강한 음운 신호가 '있다/없다'를 넘어 단어 길이 대비 충분히 밀도 있어야 high로 본다.
+        # (4음절 일상어 속 된소리 하나 같은 옅은 신호로 과신하지 않게 한다.)
+        self.min_strong_signal = meta["confidence"].get("min_strong_signal", 0.0)
 
     def _auxiliary_bonus(self, text: str, jamo: list) -> dict:
         """단독 자모 반복을 표기 보조 신호로만 제한해 보탠다."""
@@ -156,7 +159,7 @@ class ScoringModel:
             features[3] + features[4] + features[9] + features[10]
             + features[11] + features[12] + features[13]
         )
-        if strong_signal <= 0:
+        if strong_signal < self.min_strong_signal:
             return "low"
         top_score = ranked[0][1]
         if top_score <= 0:  # 점수가 비양수면 비율 판정 불가 → 모호로 본다(0-나눗셈 가드)

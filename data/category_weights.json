@@ -12,7 +12,7 @@
     "auxiliary_bonus_cap": 0.6,
     "mvp_scored_categories": 9,
     "extension_categories": ["변화·교체감"],
-    "confidence": { "min_syllables": 2 },
+    "confidence": { "min_syllables": 2, "min_strong_signal": 0.5 },
     "note": "가중치 부호·상대크기는 한국어 음운상징 문헌에 근거한다. 모음 양성/음성→밝음·작음/어두움·큼(박동근 1999:371; 국립국어원 1993; Akita 2021 한국 음/양 체계). 된소리·거센소리→강함·격렬함(박동근 1999:374,376). 종성: 불파 폐쇄음(ㄱㄷㅂ류)→막힘·단절, ㅇ/공명음(ㄴㅁㄹ)→여운·부드러움(박동근 1999 종성 대립; 국립국어원 ㅇ=[울림]; 강석한 2018). 반복→반복·리듬(중첩 도상성). 문장부호(exclaim/question/ellipsis)는 문헌 근거가 약한 표기 휴리스틱. 음성상징은 경향이며 효과크기가 작다는 반론(Pimentel 2019; Dingemanse 2015)에 따라 절대 수치가 아니라 상대 순위로만 해석하고 신뢰도로 완화한다."
   },
   "categories": {
