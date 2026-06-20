@@ -8,6 +8,7 @@
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,9 +38,11 @@ JAMO_PATTERNS = {
 }
 JAMO_MIN_REPEAT = 2       # 자모가 2회 이상이면 반복으로 본다
 
-_DEFAULT_CONFIG = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data", "category_weights.json"
+# PyInstaller로 .app 번들이 되면 데이터가 sys._MEIPASS 아래에 풀린다(개발 모드는 파일 위치).
+_DATA_DIR = os.path.join(
+    getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))), "data"
 )
+_DEFAULT_CONFIG = os.path.join(_DATA_DIR, "category_weights.json")
 
 
 @dataclass

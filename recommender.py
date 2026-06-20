@@ -9,12 +9,15 @@
 
 import json
 import os
+import sys
 from dataclasses import dataclass
 
 SIZES = ["작음", "보통", "큼"]
 
+# PyInstaller로 .app 번들이 되면 데이터가 sys._MEIPASS 아래에 풀린다(개발 모드는 파일 위치).
 _DEFAULT_CATALOG = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "data", "kaomoji_catalog.json"
+    getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__))),
+    "data", "kaomoji_catalog.json",
 )
 
 
