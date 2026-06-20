@@ -28,3 +28,6 @@ htmlcov/
 # 내부 산출물(공개 저장소에서 제외, 로컬 보관용)
 docs/git-conventions.md
 docs/goal-prompt.md
+
+# 로컬 분석용 스크린샷(소스 아님)
+tests/*.png
