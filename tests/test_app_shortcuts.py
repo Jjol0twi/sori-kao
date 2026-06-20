@@ -1,4 +1,4 @@
-"""GUI 입력창 편집 단축키 테스트."""
+"""GUI 입력창 편집 단축키 테스트(직접 클립보드 조작)."""
 
 import os
 import sys
@@ -10,58 +10,117 @@ from app import bind_text_edit_shortcuts
 
 
 class FakeEntry:
-    """편집 단축키가 Tk 표준 가상이벤트로 위임되는지 기록하는 가짜 입력창."""
+    """tk.Entry의 클립보드/선택 동작을 흉내내는 가짜 입력창."""
 
     def __init__(self):
         self.bindings = {}
-        self.generated = []
+        self.text = ""
+        self.cursor = 0
         self.selection = None
-        self.cursor = None
+        self.clipboard = ""
 
     def bind(self, sequence, callback):
         self.bindings[sequence] = callback
 
-    def event_generate(self, virtual):
-        self.generated.append(virtual)
+    def selection_present(self):
+        return self.selection is not None
 
-    def selection_range(self, start, end):
+    def select_range(self, start, end):
+        if end == "end":
+            end = len(self.text)
         self.selection = (start, end)
 
+    selection_range = select_range
+
+    def index(self, which):
+        start, end = self.selection
+        return start if which == "sel.first" else end
+
+    def get(self):
+        return self.text
+
     def icursor(self, index):
-        self.cursor = index
+        self.cursor = len(self.text) if index == "end" else index
+
+    def clipboard_clear(self):
+        self.clipboard = ""
+
+    def clipboard_append(self, text):
+        self.clipboard += text
+
+    def clipboard_get(self):
+        return self.clipboard
+
+    def delete(self, start, end=None):
+        if start == "sel.first" and end == "sel.last":
+            start, end = self.selection
+            self.selection = None
+        self.text = self.text[:start] + self.text[end:]
+        self.cursor = start
+
+    def insert(self, index, text):
+        if index == "insert":
+            index = self.cursor
+        self.text = self.text[:index] + text + self.text[index:]
+        self.cursor = index + len(text)
 
 
-class FakeEvent:
-    def __init__(self, widget):
-        self.widget = widget
+class FakeRoot:
+    """bind_all 호출을 기록하는 가짜 루트."""
+
+    def __init__(self):
+        self.all_bindings = {}
+
+    def bind_all(self, sequence, callback):
+        self.all_bindings[sequence] = callback
 
 
-def test_input_entry_binds_ctrl_edit_shortcuts_via_virtual_events():
+def test_macos_binds_both_command_and_control_globally():
+    root = FakeRoot()
+    bind_text_edit_shortcuts(root, lambda: None, is_macos=True)
+    for modifier in ("Command", "Control"):
+        for key in ("a", "c", "v", "x"):
+            assert f"<{modifier}-{key}>" in root.all_bindings
+
+
+def test_non_macos_binds_control_only():
+    root = FakeRoot()
+    bind_text_edit_shortcuts(root, lambda: None, is_macos=False)
+    assert "<Control-c>" in root.all_bindings
+    assert not any(seq.startswith("<Command-") for seq in root.all_bindings)
+
+
+def test_shortcuts_act_on_focused_widget():
+    root = FakeRoot()
     entry = FakeEntry()
-    bind_text_edit_shortcuts(entry)
+    entry.text = "hello"
+    bind_text_edit_shortcuts(root, lambda: entry, is_macos=True)
 
-    for sequence in ("<Control-a>", "<Control-c>", "<Control-v>", "<Control-x>"):
-        assert sequence in entry.bindings
+    def fire(sequence):
+        return root.all_bindings[sequence]()
 
-    # 복사/붙여넣기/잘라내기는 Tk 표준 가상이벤트로 위임한다(플랫폼 네이티브 동작).
-    assert entry.bindings["<Control-c>"](FakeEvent(entry)) == "break"
-    assert entry.generated[-1] == "<<Copy>>"
-    assert entry.bindings["<Control-v>"](FakeEvent(entry)) == "break"
-    assert entry.generated[-1] == "<<Paste>>"
-    assert entry.bindings["<Control-x>"](FakeEvent(entry)) == "break"
-    assert entry.generated[-1] == "<<Cut>>"
+    # 전체 선택
+    assert fire("<Command-a>") == "break"
+    assert entry.selection == (0, 5)
 
-    # 전체 선택은 가상이벤트 의존성을 피해 직접 처리한다.
-    assert entry.bindings["<Control-a>"](FakeEvent(entry)) == "break"
-    assert entry.selection == (0, "end")
+    # 복사 → 클립보드에 선택 텍스트
+    assert fire("<Command-c>") == "break"
+    assert entry.clipboard == "hello"
 
+    # 붙여넣기 → 선택 영역을 클립보드 내용으로 대체
+    entry.clipboard = "X"
+    entry.selection = (0, 5)
+    entry.cursor = 5
+    assert fire("<Command-v>") == "break"
+    assert entry.text == "X"
 
-def test_command_shortcuts_are_left_to_the_edit_menu():
-    # macOS Cmd 단축키는 입력창 바인딩이 아니라 표준 '편집 메뉴'에서 처리한다.
-    # 따라서 bind_text_edit_shortcuts는 Command 바인딩을 걸지 않는다.
-    entry = FakeEntry()
-    bind_text_edit_shortcuts(entry, is_macos=True)
-    assert not any(seq.startswith("<Command-") for seq in entry.bindings)
+    # 잘라내기 → 클립보드에 담고 선택 영역 삭제
+    entry.text = "hello"
+    entry.selection = (0, 5)
+    entry.clipboard = ""
+    assert fire("<Control-x>") == "break"
+    assert entry.clipboard == "hello"
+    assert entry.text == ""
 
 
 def test_main_reports_tk_runtime_error(monkeypatch, capsys):

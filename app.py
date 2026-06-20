@@ -39,36 +39,86 @@ def analyze(text: str, model: ScoringModel, recommender: KaomojiRecommender):
     return Analysis(score, recommender.recommend(score), build_explanation(score))
 
 
-# 클립보드 동작은 Tk가 플랫폼별로 구현해 둔 표준 가상이벤트에 위임한다.
-# 직접 selection_get/clipboard로 다루면 macOS Aqua에서 복사·붙여넣기가 깨진다.
-_EDIT_VIRTUAL = {"c": "<<Copy>>", "v": "<<Paste>>", "x": "<<Cut>>"}
+# 클립보드는 Tk 클립보드 API로 직접 다룬다. macOS .app 번들에서 가상이벤트
+# (<<Copy>>/<<Paste>>)나 메뉴 accelerator가 동작하지 않는 것을 실측으로 확인해,
+# clipboard_clear/append/get + insert/delete로 직접 처리한다.
+def _entry_selected_text(entry):
+    try:
+        if entry.selection_present():
+            return entry.get()[entry.index("sel.first"):entry.index("sel.last")]
+    except (tk.TclError, AttributeError):
+        pass
+    return ""
 
 
-def _make_text_edit_handler(action: str):
-    def handler(event):
-        entry = event.widget
-        if action == "a":
-            # 전체 선택은 가상이벤트 의존성(플랫폼차)이 있어 직접 처리한다.
-            entry.selection_range(0, "end")
-            entry.icursor("end")
-        else:
-            entry.event_generate(_EDIT_VIRTUAL[action])
-        return "break"
-
-    return handler
+def _entry_copy(entry):
+    text = _entry_selected_text(entry)
+    if text:
+        entry.clipboard_clear()
+        entry.clipboard_append(text)
 
 
-def bind_text_edit_shortcuts(entry, is_macos: bool = None):
-    """Ctrl 기반 편집 단축키를 입력창에 건다(복사/잘라내기/붙여넣기/전체선택).
+def _entry_cut(entry):
+    text = _entry_selected_text(entry)
+    if text:
+        entry.clipboard_clear()
+        entry.clipboard_append(text)
+        try:
+            entry.delete("sel.first", "sel.last")
+        except (tk.TclError, AttributeError):
+            pass
 
-    macOS의 Cmd 단축키는 위젯 바인딩이 아니라 App '편집 메뉴'에서 처리한다
-    (Aqua가 표준 클립보드 단축키를 메뉴로 라우팅하기 때문). is_macos는 호출
-    호환을 위해 받지만 Ctrl 바인딩 자체는 플랫폼과 무관하게 동일하다.
+
+def _entry_paste(entry):
+    try:
+        text = entry.clipboard_get()
+    except (tk.TclError, AttributeError):
+        text = ""
+    if not text:
+        return
+    try:
+        if entry.selection_present():
+            entry.delete("sel.first", "sel.last")
+    except (tk.TclError, AttributeError):
+        pass
+    entry.insert("insert", text)
+
+
+def _entry_select_all(entry):
+    entry.select_range(0, "end")
+    entry.icursor("end")
+
+
+_EDIT_ACTIONS = {
+    "a": _entry_select_all, "c": _entry_copy, "v": _entry_paste, "x": _entry_cut,
+}
+
+
+def bind_text_edit_shortcuts(root, focused_getter, is_macos: bool = None):
+    """편집 단축키(복사/잘라내기/붙여넣기/전체선택)를 앱 전역으로 건다.
+
+    macOS Aqua에서는 위젯별 <Command-…>/<Control-…> 바인딩이 발화하지 않는 일이
+    많아(실측 확인), 루트의 bind_all로 Command·Control을 모두 건다. 각 단축키는
+    현재 포커스 위젯(focused_getter())에 편집 동작을 적용한다 — 메뉴 클릭과 동일.
     """
-    for key in _EDIT_SHORTCUTS:
-        handler = _make_text_edit_handler(key)
-        entry.bind(f"<Control-{key}>", handler)
-        entry.bind(f"<Control-{key.upper()}>", handler)
+    if is_macos is None:
+        is_macos = sys.platform == "darwin"
+    modifiers = ["Command", "Control"] if is_macos else ["Control"]
+
+    def make(fn):
+        def handler(event=None):
+            target = focused_getter()
+            if target is not None:
+                fn(target)
+            return "break"
+
+        return handler
+
+    for modifier in modifiers:
+        for key, fn in _EDIT_ACTIONS.items():
+            handler = make(fn)
+            root.bind_all(f"<{modifier}-{key}>", handler)
+            root.bind_all(f"<{modifier}-{key.upper()}>", handler)
 
 
 class KaomojiApp:
@@ -112,7 +162,8 @@ class KaomojiApp:
         # 일반 Return과 숫자패드 Enter(KP_Enter)를 입력창에 직접 건다.
         for seq in ("<Return>", "<KP_Enter>"):
             self.entry.bind(seq, self._on_enter)
-        bind_text_edit_shortcuts(self.entry)
+        # 편집 단축키는 macOS에서 위젯 바인딩이 안 먹어 루트 전역(bind_all)으로 건다.
+        bind_text_edit_shortcuts(self.root, self.root.focus_get)
         self.entry.focus_set()
         tk.Button(self.entry_row, text="해석", command=self.on_submit).pack(
             side="left", padx=(8, 0)
@@ -134,22 +185,22 @@ class KaomojiApp:
         라우팅한다. 이 메뉴가 있어야 입력창에서 Cmd+C/V/X/A가 동작한다.
         각 항목은 현재 포커스 위젯에 표준 가상이벤트를 보낸다.
         """
-        def emit(virtual):
+        def act(fn):
             widget = self.root.focus_get()
             if widget is not None:
-                widget.event_generate(virtual)
+                fn(widget)
 
         menubar = tk.Menu(self.root)
         edit = tk.Menu(menubar, tearoff=0)
         edit.add_command(label="잘라내기", accelerator="Cmd+X",
-                         command=lambda: emit("<<Cut>>"))
+                         command=lambda: act(_entry_cut))
         edit.add_command(label="복사", accelerator="Cmd+C",
-                         command=lambda: emit("<<Copy>>"))
+                         command=lambda: act(_entry_copy))
         edit.add_command(label="붙여넣기", accelerator="Cmd+V",
-                         command=lambda: emit("<<Paste>>"))
+                         command=lambda: act(_entry_paste))
         edit.add_separator()
         edit.add_command(label="전체 선택", accelerator="Cmd+A",
-                         command=lambda: emit("<<SelectAll>>"))
+                         command=lambda: act(_entry_select_all))
         menubar.add_cascade(label="편집", menu=edit)
         self.root.config(menu=menubar)
 
