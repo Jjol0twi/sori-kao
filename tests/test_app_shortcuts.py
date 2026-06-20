@@ -36,36 +36,32 @@ class FakeEvent:
         self.widget = widget
 
 
-def test_input_entry_binds_macos_edit_shortcuts():
+def test_input_entry_binds_ctrl_edit_shortcuts_via_virtual_events():
     entry = FakeEntry()
-    bind_text_edit_shortcuts(entry, is_macos=True)
-
-    for sequence in ("<Command-a>", "<Command-c>", "<Command-v>", "<Command-x>"):
-        assert sequence in entry.bindings
-
-    # 복사/붙여넣기/잘라내기는 Tk 표준 가상이벤트로 위임한다(플랫폼 네이티브 동작).
-    assert entry.bindings["<Command-c>"](FakeEvent(entry)) == "break"
-    assert entry.generated[-1] == "<<Copy>>"
-    assert entry.bindings["<Command-v>"](FakeEvent(entry)) == "break"
-    assert entry.generated[-1] == "<<Paste>>"
-    assert entry.bindings["<Command-x>"](FakeEvent(entry)) == "break"
-    assert entry.generated[-1] == "<<Cut>>"
-
-    # 전체 선택은 직접 처리한다.
-    assert entry.bindings["<Command-a>"](FakeEvent(entry)) == "break"
-    assert entry.selection == (0, "end")
-
-
-def test_input_entry_binds_control_edit_shortcuts():
-    entry = FakeEntry()
-    bind_text_edit_shortcuts(entry, is_macos=False)
+    bind_text_edit_shortcuts(entry)
 
     for sequence in ("<Control-a>", "<Control-c>", "<Control-v>", "<Control-x>"):
         assert sequence in entry.bindings
 
-    # macOS가 아니어도 Control 단축키가 같은 가상이벤트로 위임된다.
+    # 복사/붙여넣기/잘라내기는 Tk 표준 가상이벤트로 위임한다(플랫폼 네이티브 동작).
+    assert entry.bindings["<Control-c>"](FakeEvent(entry)) == "break"
+    assert entry.generated[-1] == "<<Copy>>"
     assert entry.bindings["<Control-v>"](FakeEvent(entry)) == "break"
-    assert entry.generated == ["<<Paste>>"]
+    assert entry.generated[-1] == "<<Paste>>"
+    assert entry.bindings["<Control-x>"](FakeEvent(entry)) == "break"
+    assert entry.generated[-1] == "<<Cut>>"
+
+    # 전체 선택은 가상이벤트 의존성을 피해 직접 처리한다.
+    assert entry.bindings["<Control-a>"](FakeEvent(entry)) == "break"
+    assert entry.selection == (0, "end")
+
+
+def test_command_shortcuts_are_left_to_the_edit_menu():
+    # macOS Cmd 단축키는 입력창 바인딩이 아니라 표준 '편집 메뉴'에서 처리한다.
+    # 따라서 bind_text_edit_shortcuts는 Command 바인딩을 걸지 않는다.
+    entry = FakeEntry()
+    bind_text_edit_shortcuts(entry, is_macos=True)
+    assert not any(seq.startswith("<Command-") for seq in entry.bindings)
 
 
 def test_main_reports_tk_runtime_error(monkeypatch, capsys):

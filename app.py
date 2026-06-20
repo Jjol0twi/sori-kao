@@ -59,19 +59,16 @@ def _make_text_edit_handler(action: str):
 
 
 def bind_text_edit_shortcuts(entry, is_macos: bool = None):
-    """테스트 문장을 빠르게 바꿔 넣을 수 있도록 기본 편집 동작을 보장한다."""
-    if is_macos is None:
-        is_macos = sys.platform == "darwin"
+    """Ctrl 기반 편집 단축키를 입력창에 건다(복사/잘라내기/붙여넣기/전체선택).
 
-    modifiers = ["Control"]
-    if is_macos:
-        modifiers.append("Command")
-
-    for modifier in modifiers:
-        for key in _EDIT_SHORTCUTS:
-            handler = _make_text_edit_handler(key)
-            entry.bind(f"<{modifier}-{key}>", handler)
-            entry.bind(f"<{modifier}-{key.upper()}>", handler)
+    macOS의 Cmd 단축키는 위젯 바인딩이 아니라 App '편집 메뉴'에서 처리한다
+    (Aqua가 표준 클립보드 단축키를 메뉴로 라우팅하기 때문). is_macos는 호출
+    호환을 위해 받지만 Ctrl 바인딩 자체는 플랫폼과 무관하게 동일하다.
+    """
+    for key in _EDIT_SHORTCUTS:
+        handler = _make_text_edit_handler(key)
+        entry.bind(f"<Control-{key}>", handler)
+        entry.bind(f"<Control-{key.upper()}>", handler)
 
 
 class KaomojiApp:
@@ -86,6 +83,7 @@ class KaomojiApp:
         root.geometry("480x150")  # 시작은 작은 창(이후 내용에 맞춰 재조정)
 
         self._build()
+        self._build_menu()  # macOS Cmd 복사/붙여넣기가 동작하려면 표준 편집 메뉴가 필요
         self._apply_theme()
         self.root.after(120, self._refit)
         self._watch_theme()  # 시스템 테마 변경 실시간 추적
@@ -128,6 +126,32 @@ class KaomojiApp:
 
         self.result_frame = tk.Frame(self.container, padx=16, pady=8)
         self._result_shown = False
+
+    def _build_menu(self):
+        """표준 편집 메뉴(잘라내기/복사/붙여넣기/전체선택).
+
+        macOS(Aqua)는 Cmd 클립보드 단축키를 위젯 바인딩이 아니라 메뉴로
+        라우팅한다. 이 메뉴가 있어야 입력창에서 Cmd+C/V/X/A가 동작한다.
+        각 항목은 현재 포커스 위젯에 표준 가상이벤트를 보낸다.
+        """
+        def emit(virtual):
+            widget = self.root.focus_get()
+            if widget is not None:
+                widget.event_generate(virtual)
+
+        menubar = tk.Menu(self.root)
+        edit = tk.Menu(menubar, tearoff=0)
+        edit.add_command(label="잘라내기", accelerator="Cmd+X",
+                         command=lambda: emit("<<Cut>>"))
+        edit.add_command(label="복사", accelerator="Cmd+C",
+                         command=lambda: emit("<<Copy>>"))
+        edit.add_command(label="붙여넣기", accelerator="Cmd+V",
+                         command=lambda: emit("<<Paste>>"))
+        edit.add_separator()
+        edit.add_command(label="전체 선택", accelerator="Cmd+A",
+                         command=lambda: emit("<<SelectAll>>"))
+        menubar.add_cascade(label="편집", menu=edit)
+        self.root.config(menu=menubar)
 
     # ---- 테마 ----
     def _apply_theme(self):
@@ -174,6 +198,7 @@ class KaomojiApp:
         # 포커스를 잠깐 뗐다 되돌려 한글 IME 조합 버퍼를 비운다.
         # (조합 중이던 마지막 글자가 다음 입력 앞에 끼어들어 '트테스트'처럼 되는 것 방지)
         self.root.focus_set()
+        self.root.update_idletasks()  # 포커스 아웃(=IME 조합 정리)이 반영되게 한다
         self.entry.delete(0, "end")
         self._last = None
         self._clear_results()
