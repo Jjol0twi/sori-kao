@@ -52,9 +52,6 @@ FONTS = {
 }
 KAOMOJI_FONTS = {"작음": ("", 16), "보통": ("", 24), "큼": ("", 34)}
 
-# 간격 토큰
-SPACE = {"pad": 16, "gap": 8, "tight": 4}
-
 
 def detect_mode() -> str:
     """현재 시스템 외관을 'dark' 또는 'light'로 반환한다."""

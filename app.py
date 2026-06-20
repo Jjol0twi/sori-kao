@@ -21,7 +21,6 @@ from scoring_model import ScoringModel, ScoreResult
 from theme import Theme, detect_mode
 
 _EMPTY = "empty"  # 빈 입력 상태 표식
-_EDIT_SHORTCUTS = ("a", "c", "v", "x")
 
 
 @dataclass
@@ -106,7 +105,7 @@ def bind_text_edit_shortcuts(root, focused_getter, is_macos: bool = None):
     modifiers = ["Command", "Control"] if is_macos else ["Control"]
 
     def make(fn):
-        def handler(event=None):
+        def handler(_event=None):
             target = focused_getter()
             if target is not None:
                 fn(target)

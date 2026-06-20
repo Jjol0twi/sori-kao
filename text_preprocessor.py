@@ -12,7 +12,7 @@
 
 from dataclasses import dataclass, field
 
-from hangul_decomposer import Syllable, decompose_syllable
+from hangul_decomposer import decompose_syllable
 
 # 한글 호환 자모 블록(U+3131 'ㄱ' ~ U+3163 'ㅣ'): 자판으로 입력되는 단독 자모
 COMPAT_JAMO_START = 0x3131
