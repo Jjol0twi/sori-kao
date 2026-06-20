@@ -25,10 +25,13 @@ def model():
 def test_select_by_size_returns_all_sizes(rec):
     selected = rec.select_by_size("밝음·가벼움")
     assert set(selected) == set(SIZES)
-    # 카탈로그 등록 순서상 각 크기 첫 항목
-    assert selected["작음"] == "(^▽^)"
-    assert selected["보통"] == "٩(◕‿◕)۶"
-    assert selected["큼"] == "ヽ(>∀<☆)ノ"
+    # 각 크기는 카탈로그의 여러 항목을 등록 순서대로 모은 리스트다.
+    assert all(isinstance(selected[s], list) and selected[s] for s in SIZES)
+    assert selected["작음"][0] == "(^▽^)"
+    assert selected["보통"][0] == "٩(◕‿◕)۶"
+    assert selected["큼"][0] == "ヽ(>∀<☆)ノ"
+    # 다양화된 카탈로그라 크기별로 2개 이상 보여줄 수 있다.
+    assert sum(len(selected[s]) for s in SIZES) >= 3
 
 
 def test_selection_is_deterministic(rec, model):
@@ -39,11 +42,12 @@ def test_selection_is_deterministic(rec, model):
 
 
 def test_missing_size_falls_back(rec):
-    # 특정 크기가 없으면 인접 크기로 대체(빈 값 없음)
+    # 특정 크기가 없으면 인접 크기로 대체(빈 리스트 없음)
     rec.catalog["테스트"] = [{"text": "(test)", "size": "보통"}]
     selected = rec.select_by_size("테스트")
     assert all(selected[s] for s in SIZES)
-    assert selected["작음"] == "(test)"
+    assert selected["작음"] == ["(test)"]
+    assert selected["보통"] == ["(test)"]
     del rec.catalog["테스트"]
 
 

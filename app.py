@@ -243,6 +243,9 @@ class KaomojiApp:
         rec = analysis.recommendation
         tie = rec.tie
 
+        # 해석 이유가 핵심이므로, 부가 표시물인 카모지보다 위에 먼저 보여준다.
+        self._render_reasons(analysis.explanation)
+
         if len(tie) >= 2:
             # 동점은 억지로 하나를 고르지 않고, 규칙 기반 모델의 모호함을 그대로 보여준다.
             tk.Label(
@@ -262,8 +265,6 @@ class KaomojiApp:
                 self.result_frame, rec.primary_category, rec.primary_kaomoji
             )
 
-        self._render_reasons(analysis.explanation)
-
         if rec.secondary_categories:
             tk.Label(
                 self.result_frame,
@@ -280,22 +281,20 @@ class KaomojiApp:
             font=t.font("category"),
         ).pack(anchor="w")
         for size in SIZES:
-            text = kaomoji.get(size)
-            if not text:
-                continue
-            label = tk.Label(
-                column, text=text, bg=t.c("surface"), fg=t.c("text"),
-                font=t.kaomoji_font(size), padx=10, pady=4,
-                highlightthickness=1, highlightbackground=t.c("border"),
-                cursor="hand2",
-            )
-            label.pack(anchor="w", pady=3, fill="x")
-            label.bind("<Button-1>", lambda _e, x=text: self._copy(x))
+            for text in kaomoji.get(size) or []:
+                label = tk.Label(
+                    column, text=text, bg=t.c("surface"), fg=t.c("text"),
+                    font=t.kaomoji_font(size), padx=10, pady=4,
+                    highlightthickness=1, highlightbackground=t.c("border"),
+                    cursor="hand2",
+                )
+                label.pack(anchor="w", pady=3, fill="x")
+                label.bind("<Button-1>", lambda _e, x=text: self._copy(x))
 
     def _render_reasons(self, explanation: Explanation):
         t = self.theme
         box = tk.Frame(self.result_frame, bg=t.c("bg"))
-        box.pack(fill="x", pady=(10, 0))
+        box.pack(fill="x", pady=(0, 10))
         tk.Label(
             box, text="해석 이유", bg=t.c("bg"), fg=t.c("text"),
             font=t.font("section"),
