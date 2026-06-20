@@ -39,60 +39,20 @@ def analyze(text: str, model: ScoringModel, recommender: KaomojiRecommender):
     return Analysis(score, recommender.recommend(score), build_explanation(score))
 
 
-def _safe_selection_present(entry):
-    try:
-        return entry.selection_present()
-    except (tk.TclError, AttributeError):
-        return False
-
-
-def _safe_selection_text(entry):
-    # macOS Aqua에서 selection_get()은 불안정해 빈 값을 내기 쉽다.
-    # 선택 구간 인덱스로 직접 잘라내는 방식이 플랫폼 무관하게 안정적이다.
-    if not _safe_selection_present(entry):
-        return ""
-    try:
-        return entry.get()[entry.index("sel.first"):entry.index("sel.last")]
-    except (tk.TclError, AttributeError, ValueError):
-        return ""
-
-
-def _delete_selection(entry):
-    if not _safe_selection_present(entry):
-        return
-    try:
-        entry.delete("sel.first", "sel.last")
-    except (tk.TclError, AttributeError, ValueError):
-        pass
+# 클립보드 동작은 Tk가 플랫폼별로 구현해 둔 표준 가상이벤트에 위임한다.
+# 직접 selection_get/clipboard로 다루면 macOS Aqua에서 복사·붙여넣기가 깨진다.
+_EDIT_VIRTUAL = {"c": "<<Copy>>", "v": "<<Paste>>", "x": "<<Cut>>"}
 
 
 def _make_text_edit_handler(action: str):
     def handler(event):
         entry = event.widget
-
-        # macOS Tk 단축키가 런타임마다 달라 직접 처리해 입력 실험 흐름이 끊기지 않게 한다.
         if action == "a":
+            # 전체 선택은 가상이벤트 의존성(플랫폼차)이 있어 직접 처리한다.
             entry.selection_range(0, "end")
             entry.icursor("end")
-        elif action == "c":
-            selected = _safe_selection_text(entry)
-            if selected:
-                entry.clipboard_clear()
-                entry.clipboard_append(selected)
-        elif action == "v":
-            try:
-                text = entry.clipboard_get()
-            except (tk.TclError, AttributeError, ValueError):
-                text = ""
-            if text:
-                _delete_selection(entry)
-                entry.insert("insert", text)
-        elif action == "x":
-            selected = _safe_selection_text(entry)
-            if selected:
-                entry.clipboard_clear()
-                entry.clipboard_append(selected)
-                _delete_selection(entry)
+        else:
+            entry.event_generate(_EDIT_VIRTUAL[action])
         return "break"
 
     return handler
@@ -151,11 +111,9 @@ class KaomojiApp:
             relief="solid", borderwidth=1, highlightthickness=1,
         )
         self.entry.pack(side="left", fill="x", expand=True, ipady=5)
-        # Enter는 입력창과 루트 양쪽에 걸어 포커스가 어디 있든 즉시 해석되게 한다.
-        # 일반 Return과 숫자패드 Enter(KP_Enter)를 모두 받는다.
+        # 일반 Return과 숫자패드 Enter(KP_Enter)를 입력창에 직접 건다.
         for seq in ("<Return>", "<KP_Enter>"):
             self.entry.bind(seq, self._on_enter)
-            self.root.bind(seq, self._on_enter)
         bind_text_edit_shortcuts(self.entry)
         self.entry.focus_set()
         tk.Button(self.entry_row, text="해석", command=self.on_submit).pack(
@@ -213,6 +171,9 @@ class KaomojiApp:
 
     def on_reset(self):
         """입력과 결과를 지우고 다시 작은 입력창 상태로 되돌린다."""
+        # 포커스를 잠깐 뗐다 되돌려 한글 IME 조합 버퍼를 비운다.
+        # (조합 중이던 마지막 글자가 다음 입력 앞에 끼어들어 '트테스트'처럼 되는 것 방지)
+        self.root.focus_set()
         self.entry.delete(0, "end")
         self._last = None
         self._clear_results()
