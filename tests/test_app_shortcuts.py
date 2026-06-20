@@ -29,6 +29,19 @@ class FakeEntry:
         start, end = self.selection
         return self.text[start:end]
 
+    def get(self):
+        return self.text
+
+    def index(self, which):
+        if self.selection is None:
+            raise ValueError("no selection")
+        start, end = self.selection
+        if which == "sel.first":
+            return start
+        if which == "sel.last":
+            return end
+        raise ValueError(which)
+
     def selection_range(self, start, end):
         if end == "end":
             end = len(self.text)

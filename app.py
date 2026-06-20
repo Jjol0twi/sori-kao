@@ -47,8 +47,12 @@ def _safe_selection_present(entry):
 
 
 def _safe_selection_text(entry):
+    # macOS Aqua에서 selection_get()은 불안정해 빈 값을 내기 쉽다.
+    # 선택 구간 인덱스로 직접 잘라내는 방식이 플랫폼 무관하게 안정적이다.
+    if not _safe_selection_present(entry):
+        return ""
     try:
-        return entry.selection_get()
+        return entry.get()[entry.index("sel.first"):entry.index("sel.last")]
     except (tk.TclError, AttributeError, ValueError):
         return ""
 
@@ -147,7 +151,11 @@ class KaomojiApp:
             relief="solid", borderwidth=1, highlightthickness=1,
         )
         self.entry.pack(side="left", fill="x", expand=True, ipady=5)
-        self.entry.bind("<Return>", lambda _e: self.on_submit())
+        # Enter는 입력창과 루트 양쪽에 걸어 포커스가 어디 있든 즉시 해석되게 한다.
+        # 일반 Return과 숫자패드 Enter(KP_Enter)를 모두 받는다.
+        for seq in ("<Return>", "<KP_Enter>"):
+            self.entry.bind(seq, self._on_enter)
+            self.root.bind(seq, self._on_enter)
         bind_text_edit_shortcuts(self.entry)
         self.entry.focus_set()
         tk.Button(self.entry_row, text="해석", command=self.on_submit).pack(
@@ -190,6 +198,11 @@ class KaomojiApp:
         self.root.after(1500, self._watch_theme)
 
     # ---- 동작 ----
+    def _on_enter(self, _event=None):
+        # 입력창이 처리하면 "break"로 전파를 끊어 루트 바인딩과 중복 실행되지 않게 한다.
+        self.on_submit()
+        return "break"
+
     def on_submit(self):
         # 버튼/Enter 입력은 모두 같은 파이프라인을 타게 해 시연 결과가 흔들리지 않게 한다.
         analysis = analyze(self.entry.get(), self.model, self.recommender)
