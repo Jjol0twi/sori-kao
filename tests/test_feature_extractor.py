@@ -46,13 +46,18 @@ def test_dark_vowel():
 
 
 def test_final_consonant_features():
-    # 값 = 겹받침 ㅄ → density 집계, ng/s 단일 종성에는 안 들어감
-    assert _feat("값", "final_consonant_density") == 1.0
-    assert _feat("값", "final_s_ratio") == 0.0
-    # 강 = 종성 ㅇ
+    # 받침은 종류로 본다: 불파 폐쇄음(ㄱㄷㅂ류) vs 공명음(ㄴㅁㄹ) vs ㅇ.
+    # 값 = 겹받침 ㅄ → [ㅂ] 불파 폐쇄음
+    assert _feat("값", "final_stop_ratio") == 1.0
+    assert _feat("값", "final_sonorant_ratio") == 0.0
+    # 앗 = 종성 ㅅ → [ㄷ] 불파 폐쇄음
+    assert _feat("앗", "final_stop_ratio") == 1.0
+    # 강 = 종성 ㅇ(공명·울림, 별도 신호)
     assert _feat("강", "final_ng_ratio") == 1.0
-    # 앗 = 종성 ㅅ
-    assert _feat("앗", "final_s_ratio") == 1.0
+    assert _feat("강", "final_stop_ratio") == 0.0
+    # 난 = 종성 ㄴ → 공명음 받침
+    assert _feat("난", "final_sonorant_ratio") == 1.0
+    assert _feat("난", "final_stop_ratio") == 0.0
 
 
 def test_char_repetition_does_not_turn_jamo_only_input_into_generic_repetition():
@@ -84,8 +89,8 @@ def test_long_input_stays_normalized():
 
 
 def test_ssang_s_final_counts():
-    # 단일 종성 ㅆ도 final_s_ratio에 포함된다(났 = ㄴ/ㅏ/ㅆ)
-    assert _feat("났", "final_s_ratio") == 1.0
+    # 단일 종성 ㅆ도 [ㄷ]으로 중화되는 불파 폐쇄음이라 final_stop_ratio에 포함된다(났 = ㄴ/ㅏ/ㅆ)
+    assert _feat("났", "final_stop_ratio") == 1.0
 
 
 def test_consonant_class_values():

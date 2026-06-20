@@ -102,7 +102,9 @@ def test_short_bright_expression_is_low_confidence_not_yawn_meaning(model):
 
 
 def test_close_top_scores_can_be_high_when_they_are_compound_impressions(model):
-    result = model.score("쿵쾅쿵쾅")
+    # 불파 폐쇄음 받침(ㄱ) 의성어: 막힘·단절(종성) + 강함(된소리) + 반복이 함께 뜬다.
+    # ('쿵쾅'은 종성이 ㅇ(공명)이라 막힘이 아니라 여운으로 가는 게 옳으므로 폐쇄 받침 예로 교체)
+    result = model.score("똑딱똑딱")
     assert result.confidence == "high"
     assert {"강함·격렬함", "반복·리듬", "막힘·단절감"}.issubset(
         {category for category, _ in result.top3}

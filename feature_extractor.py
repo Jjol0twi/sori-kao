@@ -18,9 +18,9 @@ FEATURE_NAMES = [
     "tense_consonant_ratio",     # 3
     "aspirated_consonant_ratio", # 4
     "nasal_liquid_ratio",        # 5
-    "final_consonant_density",   # 6
-    "final_ng_ratio",            # 7
-    "final_s_ratio",             # 8
+    "final_stop_ratio",          # 6  불파 폐쇄음 받침(ㄱㄷㅂ류) → 막힘·단절감
+    "final_ng_ratio",            # 7  종성 ㅇ(공명·울림) → 지속·여운
+    "final_sonorant_ratio",      # 8  공명음 받침 ㄴㅁㄹ → 부드러움·흐름
     "syllable_repetition",       # 9
     "char_repetition",           # 10
     "exclaim_energy",            # 11
@@ -39,7 +39,11 @@ TENSE_CONSONANTS = set("ㄲㄸㅃㅆㅉ")
 ASPIRATED_CONSONANTS = set("ㅋㅌㅍㅊ")
 NASAL_LIQUID_CONSONANTS = set("ㄴㅁㄹ")
 
-S_FINALS = {"ㅅ", "ㅆ"}
+# 종성은 음절말 중화로 두 부류로 갈린다(박동근 1999, 종성 대립의 음상).
+# 불파 폐쇄음 받침: 음절 끝에서 ㄱ/ㄷ/ㅂ로 중화되며 울림 없이 소리가 급정지한다 → 막힘·단절감.
+OBSTRUENT_FINALS = set("ㄱㄲㅋㄳㄺㄷㅌㅅㅆㅈㅊㅎㅂㅍㄼㄿㅄ")
+# 공명음 받침 ㄴㅁㄹ: 비음·유음이라 소리가 울려 이어진다 → 부드러움·흐름/지속·여운(ㅇ은 final_ng로 분리).
+SONORANT_FINALS = set("ㄴㅁㄹㄵㄶㄻㄽㄾㅀ")
 
 
 def _syllable_repetition(chars) -> float:
@@ -98,9 +102,10 @@ def extract_features(result: PreprocessResult) -> np.ndarray:
         vec[3] = sum(c in TENSE_CONSONANTS for c in cho) / n
         vec[4] = sum(c in ASPIRATED_CONSONANTS for c in cho) / n
         vec[5] = sum(c in NASAL_LIQUID_CONSONANTS for c in cho) / n
-        vec[6] = sum(j != "" for j in jong) / n
+        # 받침은 '있다/없다'가 아니라 종류로 본다. 불파 폐쇄음(단절)과 공명음(여운)을 분리한다.
+        vec[6] = sum(j in OBSTRUENT_FINALS for j in jong) / n
         vec[7] = sum(j == "ㅇ" for j in jong) / n
-        vec[8] = sum(j in S_FINALS for j in jong) / n
+        vec[8] = sum(j in SONORANT_FINALS for j in jong) / n
 
     # 반복과 문장부호는 문장 의미가 아니라 강도·리듬·머뭇거림의 흔적으로만 쓴다.
     # ㅋㅋ/ㅠㅠ처럼 완성형 음절이 없는 입력은 자모 보조 신호에서만 해석해 일반 반복 쏠림을 막는다.
