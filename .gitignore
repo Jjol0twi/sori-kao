@@ -31,3 +31,7 @@ docs/goal-prompt.md
 
 # 로컬 분석용 스크린샷(소스 아님)
 tests/*.png
+
+# 보고서 및 보고서용 자산(로컬 보관, 공개 저장소 제외)
+docs/*보고서*.docx
+docs/report_assets/
